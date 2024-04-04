@@ -170,7 +170,7 @@ for cosmo in cosmos:
         plt.yscale('log')
         plt.xlim(.1,50)
         plt.ylim(1e-6,)
-        plt.title(rf'$\kappa$ - 2PCF, {plot_label}, Mean values, $z_s$={zs}',fontsize=16)
+        plt.title(rf'$\kappa$-2PCF - {plot_label}, $z_s$={zs}',fontsize=16)
         plt.xlabel(r'$\theta$ (arcmin)',fontsize=14)
         plt.ylabel(r'$\theta^{2}\,\xi \, (\theta)$',fontsize=14)
         plt.xticks([0.1,1,10,50],[0.1,1,10,50])

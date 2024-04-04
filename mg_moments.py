@@ -1,1 +1,3 @@
-# compute high order convergence moments in MG
+# Compute convergence moments in Modified Gravity
+
+
