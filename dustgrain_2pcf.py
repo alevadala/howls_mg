@@ -66,6 +66,7 @@ mu_j = 0 # Order of the Bessel function
 conv_factor = 206265/60 # Conversion factor from radians to arcmins
 correction_fr = np.sqrt(np.pi/2)*conv_factor**1.06 # Total correction to account for conversion and spherical Bessel
 correction_lcdm = np.sqrt(np.pi/2)*conv_factor**0.97
+
 offset = fft.fhtoffset(dl, initial=init, mu=mu_j, bias=bs) # Setting offset for low ringing condition
 theta = np.exp(offset)*conv_factor/l_array[::-1] # Output theta array
 
@@ -179,22 +180,21 @@ for cosmo in cosmos:
         plt.clf()
         plt.close('all')
 
-        # plt.figure(figsize=(8,6))
-        # plt.scatter(xr,two_pt,label='Measured',color='k',marker='o')
-        # plt.errorbar(xr,two_pt,yerr=err*1e3,fmt='none',color='k')
-        # plt.plot(theta,xi_fft,label='Theory',color='r',linestyle='--')
-        # plt.xscale('log')
-        # plt.yscale('log')
-        # plt.xlim(0.1,50)
-        # plt.ylim(1e-6,)
-        # plt.title(rf'$\kappa$ - 2PCF, {plot_label}, Mean values, $z_s$={zs}',fontsize=16)
-        # plt.xlabel(r'$\theta$ (arcmin)',fontsize=14)
-        # plt.ylabel(r'$\xi \, (\theta)$',fontsize=14)
-        # plt.xticks([0.1,1,10],[0.1,1,10])
-        # plt.legend(loc='upper right')
-        # plt.savefig(lin_out+f'{cosmo}_zs={zs}_lin.png', dpi=300) 
-        # plt.clf()
-        # plt.close('all')
+        plt.figure(figsize=(8,6))
+        plt.scatter(xr,two_pt,label='Measured',color='k',marker='o')
+        plt.errorbar(xr,two_pt,yerr=err*1e3,fmt='none',color='k')
+        plt.plot(theta,xi_fft,label='Theory',color='r',linestyle='--')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xlim(.1,50)
+        plt.title(rf'$\kappa$ - 2PCF, {plot_label}, Mean values, $z_s$={zs}',fontsize=16)
+        plt.xlabel(r'$\theta$ (arcmin)',fontsize=14)
+        plt.ylabel(r'$\xi \, (\theta)$',fontsize=14)
+        plt.xticks([0.1,1,10],[0.1,1,10])
+        plt.legend(loc='upper right')
+        plt.savefig(lin_out+f'{cosmo}_zs={zs}_lin.png', dpi=300) 
+        plt.clf()
+        plt.close('all')
 
 t2 = time()
 
