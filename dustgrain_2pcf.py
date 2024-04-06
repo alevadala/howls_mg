@@ -22,20 +22,24 @@ import matplotlib.pyplot as plt
 from time import time
 
 # Measured DVs path
-inpath = '/home/alessandro/phd/outputs_howls-like_filter_settings/'
+# inpath = '/home/alessandro/phd/outputs_howls-like_filter_settings/'
+inpath = '/home/alessandro/phd/new_k2pcf/outputs/'
 dv_path = inpath+'DVs/kappa_2pcf/'
 mean_path = inpath+'mean_DVs/kappa_2pcf/'
 
 # Output path
 outpath = 'Dustgrain_outs/'
-two_pt_out = outpath+'2PCF/'
-plot_out = outpath+'2PCF_plots/'
+outpath_bins = outpath+'25bins/'
+two_pt_out = outpath_bins+'2PCF/'
+plot_out = outpath_bins+'2PCF_plots/'
 mean_out = plot_out+'2PCF_mean/'
+noisy_out = plot_out+'2PCF_noisy/'
 lin_out = plot_out+'2PCF_lin/'
-vincenzo = outpath+'Vincenzo/2PCF/'
+vincenzo = outpath_bins+'Vincenzo/2PCF/'
 os.makedirs(two_pt_out, exist_ok=True)
 os.makedirs(lin_out, exist_ok=True)
 os.makedirs(mean_out, exist_ok=True)
+os.makedirs(noisy_out, exist_ok=True)
 os.makedirs(vincenzo, exist_ok=True)
 
 
@@ -64,8 +68,8 @@ init = -1.2 # Initial step for the offset
 bs = -0.5 # Bias
 mu_j = 0 # Order of the Bessel function
 conv_factor = 206265/60 # Conversion factor from radians to arcmins
-correction_fr = np.sqrt(np.pi/2)*conv_factor**1.06 # Total correction to account for conversion and spherical Bessel
-correction_lcdm = np.sqrt(np.pi/2)*conv_factor**0.97
+correction_fr = np.sqrt(np.pi/2)*conv_factor**1.05 # Total correction to account for conversion and spherical Bessel
+correction_lcdm = np.sqrt(np.pi/2)*conv_factor**0.98
 
 offset = fft.fhtoffset(dl, initial=init, mu=mu_j, bias=bs) # Setting offset for low ringing condition
 theta = np.exp(offset)*conv_factor/l_array[::-1] # Output theta array
@@ -156,33 +160,58 @@ for cosmo in cosmos:
         if cosmo == 'lcdm':
             two_pt = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_true_LCDM_z_{zs}_kappa_2pcf.txt',usecols=1)
             xr = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_true_LCDM_z_{zs}_kappa_2pcf.txt',usecols=0)
-            err = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_true_LCDM_z_{zs}_kappa_2pcf.txt',usecols=2)
+            # err = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_true_LCDM_z_{zs}_kappa_2pcf.txt',usecols=2)
+
+            two_pt_noisy = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_noisy_LCDM_z_{zs}_kappa_2pcf.txt',usecols=1)
+            xr_noisy = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_noisy_LCDM_z_{zs}_kappa_2pcf.txt',usecols=0)
+            # err_noisy = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_noisy_LCDM_z_{zs}_kappa_2pcf.txt',usecols=2)
         else:
             two_pt = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_true_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=1)
             xr = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_true_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=0)
-            err = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_true_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=2)
+            # err = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_true_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=2)
+
+            two_pt_noisy = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_noisy_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=1)
+            xr_noisy = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_noisy_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=0)
+            # err_noisy = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_noisy_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=2)
 
         # Plotting and saving measurements/theory comparison for mean values
         plt.figure(figsize=(8,6))
         plt.scatter(xr,two_pt*xr**2,label='Measured',color='k',marker='o')
-        plt.errorbar(xr,two_pt*xr**2,yerr=err*1e4,fmt='none',color='k')
+        # plt.errorbar(xr,two_pt*xr**2,yerr=err*1e5,fmt='none',color='k')
         plt.plot(theta,xi_fft*theta**2,label='Theory',color='r',linestyle='--')
         plt.xscale('log')
         plt.yscale('log')
-        plt.xlim(.1,50)
+        plt.xlim(.5,50)
         plt.ylim(1e-6,)
         plt.title(rf'$\kappa$-2PCF - {plot_label}, $z_s$={zs}',fontsize=16)
         plt.xlabel(r'$\theta$ (arcmin)',fontsize=14)
         plt.ylabel(r'$\theta^{2}\,\xi \, (\theta)$',fontsize=14)
-        plt.xticks([0.1,1,10,50],[0.1,1,10,50])
+        plt.xticks([0.5,1,10,50],[0.5,1,10,50])
         plt.legend(loc='lower right')
         plt.savefig(mean_out+f'{cosmo}_zs={zs}.png', dpi=300) 
         plt.clf()
         plt.close('all')
 
         plt.figure(figsize=(8,6))
+        plt.scatter(xr_noisy,two_pt_noisy*xr_noisy**2,label='Measured+shot noise',color='k',marker='o')
+        # plt.errorbar(xr_noisy,two_pt_noisy*xr_noisy**2,yerr=err*1e5,fmt='none',color='k')
+        plt.plot(theta,xi_fft*theta**2,label='Theory',color='r',linestyle='--')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xlim(.5,50)
+        plt.ylim(1e-6,)
+        plt.title(rf'$\kappa$-2PCF - {plot_label}, $z_s$={zs}',fontsize=16)
+        plt.xlabel(r'$\theta$ (arcmin)',fontsize=14)
+        plt.ylabel(r'$\theta^{2}\,\xi \, (\theta)$',fontsize=14)
+        plt.xticks([0.5,1,10,50],[0.5,1,10,50])
+        plt.legend(loc='lower right')
+        plt.savefig(noisy_out+f'{cosmo}_zs={zs}.png', dpi=300) 
+        plt.clf()
+        plt.close('all')
+
+        plt.figure(figsize=(8,6))
         plt.scatter(xr,two_pt,label='Measured',color='k',marker='o')
-        plt.errorbar(xr,two_pt,yerr=err*1e3,fmt='none',color='k')
+        # plt.errorbar(xr,two_pt,yerr=err*1e3,fmt='none',color='k')
         plt.plot(theta,xi_fft,label='Theory',color='r',linestyle='--')
         plt.xscale('log')
         plt.yscale('log')
