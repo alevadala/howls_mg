@@ -43,7 +43,7 @@ k_max = 1000 # value high enough to safely use the interpolator
 
 # Define the redshift range
 z_range = np.linspace(0, 4, 100)
-k_points = 300
+# k_points = 300
 
 # DUSTGRAIN redshift values
 zs_values = [0.5, 1.0, 2.0, 4.0]
@@ -262,49 +262,49 @@ for cosmo in cosmos:
         elif 'fr6' in cosmo:
             fR0 = 1e-6
         
-        # Computing the pseudo power spectrum through nPPF (see ReAct documentation for details)
-        model_pseudo = 'fulleftppf' # Full linear EFTofDE model with a nPPF screening nonlinear Poisson modification
+        # # Computing the pseudo power spectrum through nPPF (see ReAct documentation for details)
+        # model_pseudo = 'fulleftppf' # Full linear EFTofDE model with a nPPF screening nonlinear Poisson modification
 
-        # Setting parameters for pseudo power spectrum and reaction
+        # # Setting parameters for pseudo power spectrum and reaction
 
-        # Set linear theory
+        # # Set linear theory
 
-        #Hu-Sawicki with n=1 (EFT functions)
-        alphak0 = 0.
-        alphab0 = -fR0 # note the minus sign, as above fR0 is the absolute value
-        alpham0 = -fR0 # note the minus sign
-        alphat0 = 0.
-        m2 = -fR0 # note the minus sign
+        # #Hu-Sawicki with n=1 (EFT functions)
+        # alphak0 = 0.
+        # alphab0 = -fR0 # note the minus sign, as above fR0 is the absolute value
+        # alpham0 = -fR0 # note the minus sign
+        # alphat0 = 0.
+        # m2 = -fR0 # note the minus sign
 
-        # For nPPF
-        extrapars = np.zeros(20)
+        # # For nPPF
+        # extrapars = np.zeros(20)
             
-        # Set nonlinear theory
+        # # Set nonlinear theory
 
-        # For nPPF we use the expressions in Eq. 5.6 of arXiv:1608.00522
-        alpha = 0.5 
-        omegabd = 0
+        # # For nPPF we use the expressions in Eq. 5.6 of arXiv:1608.00522
+        # alpha = 0.5 
+        # omegabd = 0
 
-        extrapars[0] = alphak0
-        extrapars[1] = alphab0
-        extrapars[2] = alpham0
-        extrapars[3] = alphat0
-        extrapars[4] = m2
+        # extrapars[0] = alphak0
+        # extrapars[1] = alphab0
+        # extrapars[2] = alpham0
+        # extrapars[3] = alphat0
+        # extrapars[4] = m2
 
-        extrapars[5] = 3
-        extrapars[6] = 1
-        extrapars[7] = (4.-alpha)/(1.-alpha)
-        extrapars[8] = Omega_M**(1/3) * ((Omega_M + 4*(1-Omega_M))**(1/(alpha-1)) *extrapars[5]/3/fR0)**(1./extrapars[7])
-        extrapars[9] = -1
-        extrapars[10] = 2/(3*extrapars[7])
-        extrapars[11] = 3/(alpha-4)
-        extrapars[12] = -0.8 # Yukawa suppression
+        # extrapars[5] = 3
+        # extrapars[6] = 1
+        # extrapars[7] = (4.-alpha)/(1.-alpha)
+        # extrapars[8] = Omega_M**(1/3) * ((Omega_M + 4*(1-Omega_M))**(1/(alpha-1)) *extrapars[5]/3/fR0)**(1./extrapars[7])
+        # extrapars[9] = -1
+        # extrapars[10] = 2/(3*extrapars[7])
+        # extrapars[11] = 3/(alpha-4)
+        # extrapars[12] = -0.8 # Yukawa suppression
 
-        # This parameter scales the background function c(a). 
-        # Because we assume LCDM H(a), c(a) will not be identically 0 so we shoulds set it by hand
-        c0 = 0. 
+        # # This parameter scales the background function c(a). 
+        # # Because we assume LCDM H(a), c(a) will not be identically 0 so we shoulds set it by hand
+        # c0 = 0. 
 
-        extrapars[19] = c0
+        # extrapars[19] = c0
 
         # Compute reaction for f(R) with exact solution
 
@@ -320,18 +320,18 @@ for cosmo in cosmos:
 
         # Compute pseudo power spectrum with nPPF
 
-        print(f'Computing pseudo power spectrum for {cosmo}\n')
+        # print(f'Computing pseudo power spectrum for {cosmo}\n')
 
-        _, _, _, pseudo = react.compute_reaction_ext(
-                                        h, n_s, Omega_M, Omega_b, sigma_8, z_react, kh_camb, pk_camb[0], model_pseudo, 
-                                        extrapars, 
-                                        is_transfer=False, mass_loop=massloop,
-                                        verbose=False)
+        # _, _, _, pseudo = react.compute_reaction_ext(
+        #                                 h, n_s, Omega_M, Omega_b, sigma_8, z_react, kh_camb, pk_camb[0], model_pseudo, 
+        #                                 extrapars, 
+        #                                 is_transfer=False, mass_loop=massloop,
+        #                                 verbose=False)
         
-        print('\n')
+        # print('\n')
 
         # f(R) non linear power spectrum up to z=2.5
-        pk_partial = R*pseudo
+        # pk_partial = R*pseudo
 
         # Non-linear power spectrum for f(R) from CAMB, to have P(z,k) for z > 2.5
         pars_CAMB = camb.CAMBparams(WantTransfer=True, 
@@ -356,6 +356,7 @@ for cosmo in cosmos:
         kh_nlcamb, z_nlcamb, pk_nlcamb = res.get_nonlinear_matter_power_spectrum(hubble_units=False, k_hunit=False)
 
         # The full non linear Pk is built from ReAct for z<2.5 and MGCAMB-HMCode for z>=2.5
+        pk_partial = R*pk_nlcamb[0:62]
         pk_nonlin = np.append(pk_partial,pk_nlcamb[62::],axis=0)
 
     # Setting a fixed grid interpolator to be able to use the Limber approximation

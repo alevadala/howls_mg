@@ -64,11 +64,11 @@ dl = np.log(l_array[1]/l_array[0]) # Discrete Hankel transform step
 # twopt_max  = pix_res * npix * np.sqrt(2)
 
 # Settings for the FHT
-init = -1.2 # Initial step for the offset
-bs = -0.5 # Bias
+init = -1.4 # Initial step for the offset
+bs = -0.3 # Bias
 mu_j = 0 # Order of the Bessel function
 conv_factor = 206265/60 # Conversion factor from radians to arcmins
-correction_fr = np.sqrt(np.pi/2)*conv_factor**1.05 # Total correction to account for conversion and spherical Bessel
+correction_fr = np.sqrt(np.pi/2)*conv_factor # Total correction to account for conversion and spherical Bessel
 correction_lcdm = np.sqrt(np.pi/2)*conv_factor**0.98
 
 offset = fft.fhtoffset(dl, initial=init, mu=mu_j, bias=bs) # Setting offset for low ringing condition
@@ -158,32 +158,66 @@ for cosmo in cosmos:
         
         # Loading mean DVs
         if cosmo == 'lcdm':
-            two_pt = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_true_LCDM_z_{zs}_kappa_2pcf.txt',usecols=1)
-            xr = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_true_LCDM_z_{zs}_kappa_2pcf.txt',usecols=0)
-            # err = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_true_LCDM_z_{zs}_kappa_2pcf.txt',usecols=2)
-
-            two_pt_noisy = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_noisy_LCDM_z_{zs}_kappa_2pcf.txt',usecols=1)
-            xr_noisy = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_noisy_LCDM_z_{zs}_kappa_2pcf.txt',usecols=0)
-            # err_noisy = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_noisy_LCDM_z_{zs}_kappa_2pcf.txt',usecols=2)
+            name_cosmo = 'LCDM'
         else:
-            two_pt = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_true_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=1)
-            xr = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_true_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=0)
-            # err = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_true_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=2)
+            name_cosmo = plot_label.replace(' ','_')
 
-            two_pt_noisy = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_noisy_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=1)
-            xr_noisy = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_noisy_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=0)
-            # err_noisy = np.loadtxt(mean_path+'LCDM_DUSTGRAIN_convergence_noisy_'+ plot_label.replace(' ','_') + f'_z_{zs}_kappa_2pcf.txt',usecols=2)
+        two_pt = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_true_{name_cosmo}_z_{zs}_kappa_2pcf.txt',usecols=1)
+        xr = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_true_{name_cosmo}_z_{zs}_kappa_2pcf.txt',usecols=0)
+
+        two_pt_noisy = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_noisy_{name_cosmo}_z_{zs}_kappa_2pcf.txt',usecols=1)
+        xr_noisy = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_noisy_{name_cosmo}_z_{zs}_kappa_2pcf.txt',usecols=0)
+
+
+        sigma_xi = np.zeros(25)
+        sigma_xi_noisy = np.zeros(25)
+
+        for n_bin in range(25):    
+            bin_err = []
+            bin_err_noisy = []
+            
+            for n_map in range(256):
+
+                noise_tag = f'noisy_shapenoiseseed_{n_map+1}'                
+                map_path_noisy = dv_path+f'{str(n_map).zfill(3)}_LCDM_DUSTGRAIN_convergence_{noise_tag}_{name_cosmo}_z_{zs}_kappa_2pcf.txt'
+                map_err_noisy = np.loadtxt(map_path_noisy,usecols=4)
+                bin_err_noisy.append(map_err_noisy[n_bin])
+
+                map_path = dv_path+f'{str(n_map).zfill(3)}_LCDM_DUSTGRAIN_convergence_true_{name_cosmo}_z_{zs}_kappa_2pcf.txt'
+                map_err = np.loadtxt(map_path,usecols=4)
+                bin_err.append(map_err[n_bin])
+                
+            sigma_xi[n_bin] = np.std(np.array(bin_err))/np.sqrt(256)
+            sigma_xi_noisy[n_bin] = np.std(np.array(bin_err_noisy))/np.sqrt(256)
+
+
+        bin_matrix = np.zeros((25,256))
+        bin_matrix_noise = np.zeros((25,256))
+        
+        for n_map in range(256):
+            noise_tag = f'noisy_shapenoiseseed_{n_map+1}'                
+            map_noise = dv_path+f'{str(n_map).zfill(3)}_LCDM_DUSTGRAIN_convergence_{noise_tag}_{name_cosmo}_z_{zs}_kappa_2pcf.txt'
+            xi_noise = np.loadtxt(map_path,usecols=3)
+            bin_matrix_noise[:,n_map] = xi_noise
+
+            map_path = dv_path+f'{str(n_map).zfill(3)}_LCDM_DUSTGRAIN_convergence_true_{name_cosmo}_z_{zs}_kappa_2pcf.txt'
+            xi_map = np.loadtxt(map_path,usecols=3)
+            bin_matrix[:,n_map] = xi_map
+
+        cov_matr  = np.cov(bin_matrix)
+        cov_matr_noisy = np.cov(bin_matrix_noise)
 
         # Plotting and saving measurements/theory comparison for mean values
-        plt.figure(figsize=(8,6))
-        plt.scatter(xr,two_pt*xr**2,label='Measured',color='k',marker='o')
-        # plt.errorbar(xr,two_pt*xr**2,yerr=err*1e5,fmt='none',color='k')
+        plt.figure(figsize=(10,8))
+        plt.scatter(xr,two_pt*xr**2,label='Measured',color='k',marker='.')
+        plt.errorbar(xr,two_pt*xr**2,yerr=sigma_xi*xr**2/np.log(10)/two_pt,color='k',label=r'Mean error')
+        plt.errorbar(xr,two_pt*xr**2,yerr=np.diagonal(cov_matr)*xr**2/np.log(10)/two_pt,fmt='none',color='magenta',label='Cov. matrix error')
         plt.plot(theta,xi_fft*theta**2,label='Theory',color='r',linestyle='--')
         plt.xscale('log')
         plt.yscale('log')
         plt.xlim(.5,50)
         plt.ylim(1e-6,)
-        plt.title(rf'$\kappa$-2PCF - {plot_label}, $z_s$={zs}',fontsize=16)
+        plt.title(rf'{plot_label}, $z_s$={zs}',fontsize=16)
         plt.xlabel(r'$\theta$ (arcmin)',fontsize=14)
         plt.ylabel(r'$\theta^{2}\,\xi \, (\theta)$',fontsize=14)
         plt.xticks([0.5,1,10,50],[0.5,1,10,50])
@@ -192,15 +226,16 @@ for cosmo in cosmos:
         plt.clf()
         plt.close('all')
 
-        plt.figure(figsize=(8,6))
-        plt.scatter(xr_noisy,two_pt_noisy*xr_noisy**2,label='Measured+shot noise',color='k',marker='o')
-        # plt.errorbar(xr_noisy,two_pt_noisy*xr_noisy**2,yerr=err*1e5,fmt='none',color='k')
+        plt.figure(figsize=(10,8))
+        plt.scatter(xr_noisy,two_pt_noisy*xr_noisy**2,label='Measured',color='k',marker='.')
+        plt.errorbar(xr_noisy,two_pt_noisy*xr_noisy**2,yerr=sigma_xi_noisy*xr_noisy**2/np.log(10)/two_pt,color='k',label=r'Mean error')
+        plt.errorbar(xr_noisy,two_pt_noisy*xr_noisy**2,yerr=np.diagonal(cov_matr_noisy)*xr_noisy**2/np.log(10)/two_pt_noisy,fmt='none',color='magenta',label='Cov. matrix error')
         plt.plot(theta,xi_fft*theta**2,label='Theory',color='r',linestyle='--')
         plt.xscale('log')
         plt.yscale('log')
         plt.xlim(.5,50)
         plt.ylim(1e-6,)
-        plt.title(rf'$\kappa$-2PCF - {plot_label}, $z_s$={zs}',fontsize=16)
+        plt.title(rf'Noisy, {plot_label}, $z_s$={zs}',fontsize=16)
         plt.xlabel(r'$\theta$ (arcmin)',fontsize=14)
         plt.ylabel(r'$\theta^{2}\,\xi \, (\theta)$',fontsize=14)
         plt.xticks([0.5,1,10,50],[0.5,1,10,50])
@@ -209,19 +244,37 @@ for cosmo in cosmos:
         plt.clf()
         plt.close('all')
 
-        plt.figure(figsize=(8,6))
-        plt.scatter(xr,two_pt,label='Measured',color='k',marker='o')
-        # plt.errorbar(xr,two_pt,yerr=err*1e3,fmt='none',color='k')
+        plt.figure(figsize=(10,8))
+        plt.scatter(xr,two_pt,label='Measured',color='k',marker='.')
+        plt.errorbar(xr,two_pt,yerr=sigma_xi/np.log(10)/two_pt,color='k',label=r'Mean error')
+        plt.errorbar(xr,two_pt,yerr=np.diagonal(cov_matr)/np.log(10)/two_pt,fmt='none',color='magenta',label='Cov. matrix error')
         plt.plot(theta,xi_fft,label='Theory',color='r',linestyle='--')
         plt.xscale('log')
         plt.yscale('log')
-        plt.xlim(.1,50)
-        plt.title(rf'$\kappa$ - 2PCF, {plot_label}, Mean values, $z_s$={zs}',fontsize=16)
+        plt.xlim(.5,50)
+        plt.title(rf'Mean values, {plot_label}, $z_s$={zs}',fontsize=16)
         plt.xlabel(r'$\theta$ (arcmin)',fontsize=14)
         plt.ylabel(r'$\xi \, (\theta)$',fontsize=14)
-        plt.xticks([0.1,1,10],[0.1,1,10])
+        plt.xticks([0.5,1,10,50],[0.5,1,10,50])
         plt.legend(loc='upper right')
         plt.savefig(lin_out+f'{cosmo}_zs={zs}_lin.png', dpi=300) 
+        plt.clf()
+        plt.close('all')
+
+        plt.figure(figsize=(10,8))
+        plt.scatter(xr,two_pt,label='Measured',color='k',marker='.')
+        plt.errorbar(xr_noisy,two_pt_noisy,yerr=sigma_xi_noisy/np.log(10)/two_pt,color='k',label=r'Mean error')
+        plt.errorbar(xr_noisy,two_pt_noisy,yerr=np.diagonal(cov_matr_noisy)/np.log(10)/two_pt_noisy,fmt='none',color='magenta',label='Cov. matrix error')
+        plt.plot(theta,xi_fft,label='Theory',color='r',linestyle='--')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xlim(.5,50)
+        plt.title(rf'Noisy, {plot_label}, $z_s$={zs}',fontsize=16)
+        plt.xlabel(r'$\theta$ (arcmin)',fontsize=14)
+        plt.ylabel(r'$\xi \, (\theta)$',fontsize=14)
+        plt.xticks([0.5,1,10,50],[0.5,1,10,50])
+        plt.legend(loc='upper right')
+        plt.savefig(lin_out+f'{cosmo}_zs={zs}_lin_noise.png', dpi=300) 
         plt.clf()
         plt.close('all')
 
