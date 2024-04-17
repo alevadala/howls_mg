@@ -56,7 +56,7 @@ cosmo_sets = {
 
 # Define the range for k (just k, not k/h)
 k_min = 10**(-4.1) # for lower values CAMB does not compute P(z, k)
-k_max = 100 #10**(1.5) # value high enough to safely use the interpolator
+k_max = 100 #10**(1.5) # set to higher value
 
 # Define the redshift range
 z_range = np.linspace(0, 4, 100)
