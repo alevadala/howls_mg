@@ -153,8 +153,6 @@ for cosmo in cosmos:
 
         # File for Vincenzo
         np.savetxt(vincenzo+f'{cosmo}_{zs}.txt',np.column_stack((np.log10(theta),xi_fft)),delimiter=',',header='log theta, xi(theta)')
-
-        print(f'Saving plots for {cosmo} at zs={zs}\n')
         
         # Loading mean DVs
         if cosmo == 'lcdm':
@@ -168,7 +166,9 @@ for cosmo in cosmos:
         two_pt_noisy = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_noisy_{name_cosmo}_z_{zs}_kappa_2pcf.txt',usecols=1)
         xr_noisy = np.loadtxt(mean_path+f'LCDM_DUSTGRAIN_convergence_noisy_{name_cosmo}_z_{zs}_kappa_2pcf.txt',usecols=0)
 
+        print(f'Computing errors and covariance matrix for {cosmo} at zs={zs}\n')
 
+        # Defining arrays for errors
         sigma_xi = np.zeros(25)
         sigma_xi_noisy = np.zeros(25)
 
@@ -190,7 +190,7 @@ for cosmo in cosmos:
             sigma_xi[n_bin] = np.std(np.array(bin_err))/np.sqrt(256)
             sigma_xi_noisy[n_bin] = np.std(np.array(bin_err_noisy))/np.sqrt(256)
 
-
+        # Defining the values matrices
         bin_matrix = np.zeros((25,256))
         bin_matrix_noise = np.zeros((25,256))
         
@@ -204,8 +204,11 @@ for cosmo in cosmos:
             xi_map = np.loadtxt(map_path,usecols=3)
             bin_matrix[:,n_map] = xi_map
 
+        # Defining the covariance matrices
         cov_matr  = np.cov(bin_matrix)
         cov_matr_noisy = np.cov(bin_matrix_noise)
+
+        print(f'Saving plots for {cosmo} at zs={zs}\n')
 
         # Plotting and saving measurements/theory comparison for mean values
         plt.figure(figsize=(10,8))
