@@ -1,23 +1,11 @@
-##################################################################
-## CHANGES:
-## Removed plot for individual maps and for xi(theta), just of theta^2.xi(theta).
-## Changed l range in 10-100000, with 5000 points instead of 10000.
-## Order of the Bessel returned to 0, due to better agreement with data.
-## Reduced theta range to ~ 0.5-100 (it depends on the shift w.r.t l range) 
-## Introduced the limber correction term, with the possibility to switch it off.
-## Reduced the correction on the conversion factor.
-##################################################################
-
 import numpy as np
-import sys
-sys.path.insert(0, '/home/alessandro/code')
-
-from MGCAMB import camb
 
 from scipy import fft
 
 import os
 import matplotlib.pyplot as plt
+import seaborn as sns
+import csv
 
 from time import time
 
@@ -29,6 +17,10 @@ mean_path = inpath+'mean_DVs/kappa_2pcf/'
 
 # Output path
 outpath = 'Dustgrain_outs/'
+pk_path = outpath+'Pknl/'
+cls_path = outpath+'Cls/'
+pk_plots = outpath+'Pknl_plots/'
+cls_plots = outpath+'Cls_plots/'
 outpath_bins = outpath+'25bins/'
 two_pt_out = outpath_bins+'2PCF/'
 plot_out = outpath_bins+'2PCF_plots/'
@@ -36,12 +28,15 @@ mean_out = plot_out+'2PCF_mean/'
 noisy_out = plot_out+'2PCF_noisy/'
 lin_out = plot_out+'2PCF_lin/'
 vincenzo = outpath_bins+'Vincenzo/2PCF/'
+
+print('Creating directories\n')
+os.makedirs(pk_plots, exist_ok=True)
+os.makedirs(cls_plots, exist_ok=True)
 os.makedirs(two_pt_out, exist_ok=True)
 os.makedirs(lin_out, exist_ok=True)
 os.makedirs(mean_out, exist_ok=True)
 os.makedirs(noisy_out, exist_ok=True)
 os.makedirs(vincenzo, exist_ok=True)
-
 
 
 # DUSTGRAIN redshift values
@@ -57,25 +52,19 @@ l_max = 5
 l_array = np.logspace(l_min,l_max,ell_points)
 dl = np.log(l_array[1]/l_array[0]) # Discrete Hankel transform step
 
-# Limits of measured theta
-# npix = 2048 #pixels
-# pix_res = (5 / npix) * 60 #arcmins
-# twopt_min  = pix_res
-# twopt_max  = pix_res * npix * np.sqrt(2)
-
 # Settings for the FHT
 init = -1.4 # Initial step for the offset
 bs = -0.3 # Bias
 mu_j = 0 # Order of the Bessel function
 conv_factor = 206265/60 # Conversion factor from radians to arcmins
-correction_fr = np.sqrt(np.pi/2)*conv_factor # Total correction to account for conversion and spherical Bessel
-correction_lcdm = np.sqrt(np.pi/2)*conv_factor**0.98
+correction = np.sqrt(np.pi/2)*conv_factor # Total correction to account for conversion and spherical Bessel
 
 offset = fft.fhtoffset(dl, initial=init, mu=mu_j, bias=bs) # Setting offset for low ringing condition
 theta = np.exp(offset)*conv_factor/l_array[::-1] # Output theta array
 
 # Switch the Limber correction on/off
 correct_limber = 1
+
 
 # Correction to the Limber approximation for low ls
 def limber_correction(l):
@@ -84,6 +73,11 @@ def limber_correction(l):
 t1 = time()
 
 for cosmo in cosmos:
+
+    if cosmo == 'lcdm':
+        methods = ['HM', 'EE2', 'Win']
+    else:
+        methods = ['RHM','RHF', 'Win']
 
     print(f'Starting computation for {cosmo}\n')
     # Plot labels
@@ -126,33 +120,64 @@ for cosmo in cosmos:
 
         plot_label = 'fR6 0.06eV'
 
+    plt.figure(figsize=(10,8))
+    sns.set_theme(style='whitegrid')
+    sns.set_palette('bright')
+
+    for method in methods:
+        k = np.loadtxt(pk_path+f'k_{cosmo}_{method}.txt')
+        z = np.loadtxt(pk_path+f'z_{cosmo}_{method}.txt')
+        pk_in = f'{cosmo}_{method}.txt'
+        plt_label = f'{method}'
+        
+        with open(pk_path+pk_in,'r',newline='\n') as pk_impo:
+            pk_nonlin = np.zeros((len(z),len(k)))
+            reader = csv.reader(pk_impo)
+            for i,row in enumerate(reader):
+                pk_nonlin[i,:] = row
+
+        for i, (redshift, line) in enumerate(zip(z,['-'])):
+            plt.loglog(k, pk_nonlin[i,:], ls = line, label=plt_label)
+
+    plt.xlabel(r'k/h $[Mpc^{-1}]$', fontsize=14)
+    plt.title(plot_label+', P(z,k)', fontsize=16)
+    plt.legend()
+    plt.savefig(pk_plots+f'{cosmo}.png', dpi=300) 
+    plt.clf()
+    plt.close('all')
+
     for zs in zs_values:
 
         print(f'Importing C(l) for {cosmo} at zs={zs}\n')
+        
+        # Plotting and saving C(l) plots
+        plt.figure(figsize=(10,8))
+        sns.set_theme(style='whitegrid')
+        sns.set_palette('bright')
 
         # Import pre-computed the C(l)s
-        cls = np.loadtxt(outpath+f'Cls/{cosmo}_{zs}.txt')
+        for method in methods:
+            if correct_limber:
+                limber_term = np.fromiter((limber_correction(l) for l in l_array),float)
+                cls = np.loadtxt(cls_path+f'{cosmo}_{method}_{zs}.txt')
+                cls = limber_term*cls
+            else:
+                cls = np.loadtxt(cls_path+f'{cosmo}_{method}_{zs}.txt')
+            plt.loglog(l_array,l_array*(l_array+1)*cls/2/np.pi,label=f'{method}')
+        plt.xlim(l_array.min(),l_array.max())
+        plt.title(rf'{plot_label}, $z_s$={zs}',fontsize=16)
+        plt.xlabel(r'$\ell$',fontsize=14)
+        plt.ylabel(r'$\ell \, (\ell + 1) \, P_{\kappa}(\ell) / (2\pi)$',fontsize=14)
+        plt.legend()
+        plt.savefig(cls_plots+f'{cosmo}_zs={zs}.png', dpi=300) 
+        plt.clf()
+        plt.close('all')
 
-        if correct_limber:
-            limber_term = np.fromiter((limber_correction(l) for l in l_array),float)
-            cls = limber_term*cls
         
         # Computing the 2PCF through Hankel transform
         # The expression of the discrete Hankel transform has been modified to match
         # the canonical definition of the two-point c.f.
         print(f'Computing 2PCF for {cosmo} at zs={zs}\n')
-
-        if cosmo == 'lcdm':
-            correction = correction_lcdm
-        else:
-            correction = correction_fr
-
-        xi_fft = fft.fht(cls*l_array*correction,dln=dl,mu=mu_j,offset=offset,bias=bs)/theta/2/np.pi
-        # Saving the 2PCF values
-        np.savetxt(two_pt_out+f'{cosmo}_{zs}_2pcf.txt',xi_fft)
-
-        # File for Vincenzo
-        np.savetxt(vincenzo+f'{cosmo}_{zs}.txt',np.column_stack((np.log10(theta),xi_fft)),delimiter=',',header='log theta, xi(theta)')
         
         # Loading mean DVs
         if cosmo == 'lcdm':
@@ -211,18 +236,35 @@ for cosmo in cosmos:
         print(f'Saving plots for {cosmo} at zs={zs}\n')
 
         # Plotting and saving measurements/theory comparison for mean values
+
         plt.figure(figsize=(10,8))
+        sns.set_theme(style='whitegrid')
+        sns.set_palette('bright')
+
+        for method in methods:
+            if correct_limber:
+                limber_term = np.fromiter((limber_correction(l) for l in l_array),float)
+                cl = np.loadtxt(cls_path+f'{cosmo}_{method}_{zs}.txt')
+                cl = limber_term*cl
+            else:
+                cl = np.loadtxt(cls_path+f'{cosmo}_{method}_{zs}.txt')
+            xi_fft = fft.fht(cl*l_array*correction,dln=dl,mu=mu_j,offset=offset,bias=bs)/theta/2/np.pi
+            # Saving the 2PCF values
+            np.savetxt(two_pt_out+f'{cosmo}_{method}_{zs}_2pcf.txt',xi_fft)
+            # File for Vincenzo
+            np.savetxt(vincenzo+f'{cosmo}_{method}_{zs}.txt',np.column_stack((np.log10(theta),xi_fft)),delimiter=',',header='log theta, xi(theta)')
+            plt.plot(theta,xi_fft*theta**2,label=f'{method}',linestyle='--')
+
         plt.scatter(xr,two_pt*xr**2,label='Measured',color='k',marker='.')
-        plt.errorbar(xr,two_pt*xr**2,yerr=sigma_xi*xr**2/np.log(10)/two_pt,color='k',label=r'Mean error')
-        plt.errorbar(xr,two_pt*xr**2,yerr=np.diagonal(cov_matr)*xr**2/np.log(10)/two_pt,fmt='none',color='magenta',label='Cov. matrix error')
-        plt.plot(theta,xi_fft*theta**2,label='Theory',color='r',linestyle='--')
+        plt.errorbar(xr,two_pt*xr**2,yerr=sigma_xi*xr**2/np.log(10)/two_pt,fmt='none',color='r',label=r'Mean error')
+        plt.errorbar(xr,two_pt*xr**2,yerr=np.diagonal(cov_matr)*xr**2/np.log(10)/two_pt,color='k',label='Cov. matrix error')
         plt.xscale('log')
         plt.yscale('log')
         plt.xlim(.5,50)
         plt.ylim(1e-6,)
         plt.title(rf'{plot_label}, $z_s$={zs}',fontsize=16)
         plt.xlabel(r'$\theta$ (arcmin)',fontsize=14)
-        plt.ylabel(r'$\theta^{2}\,\xi \, (\theta)$',fontsize=14)
+        plt.ylabel(r'$\theta^2 \; \xi \, (\theta)$',fontsize=14)
         plt.xticks([0.5,1,10,50],[0.5,1,10,50])
         plt.legend(loc='lower right')
         plt.savefig(mean_out+f'{cosmo}_zs={zs}.png', dpi=300) 
@@ -230,10 +272,22 @@ for cosmo in cosmos:
         plt.close('all')
 
         plt.figure(figsize=(10,8))
+        sns.set_theme(style='whitegrid')
+        sns.set_palette('bright')
+
+        for method in methods:
+            if correct_limber:
+                limber_term = np.fromiter((limber_correction(l) for l in l_array),float)
+                cl = np.loadtxt(cls_path+f'{cosmo}_{method}_{zs}.txt')
+                cl = limber_term*cl
+            else:
+                cl = np.loadtxt(cls_path+f'{cosmo}_{method}_{zs}.txt')
+            xi_fft = fft.fht(cl*l_array*correction,dln=dl,mu=mu_j,offset=offset,bias=bs)/theta/2/np.pi
+            plt.plot(theta,xi_fft*theta**2,label=f'{method}',linestyle='--')
+
         plt.scatter(xr_noisy,two_pt_noisy*xr_noisy**2,label='Measured',color='k',marker='.')
-        plt.errorbar(xr_noisy,two_pt_noisy*xr_noisy**2,yerr=sigma_xi_noisy*xr_noisy**2/np.log(10)/two_pt,color='k',label=r'Mean error')
-        plt.errorbar(xr_noisy,two_pt_noisy*xr_noisy**2,yerr=np.diagonal(cov_matr_noisy)*xr_noisy**2/np.log(10)/two_pt_noisy,fmt='none',color='magenta',label='Cov. matrix error')
-        plt.plot(theta,xi_fft*theta**2,label='Theory',color='r',linestyle='--')
+        plt.errorbar(xr_noisy,two_pt_noisy*xr_noisy**2,yerr=sigma_xi_noisy*xr_noisy**2/np.log(10)/two_pt,fmt='none',color='r',label=r'Mean error')
+        plt.errorbar(xr_noisy,two_pt_noisy*xr_noisy**2,yerr=np.diagonal(cov_matr_noisy)*xr_noisy**2/np.log(10)/two_pt_noisy,color='k',label='Cov. matrix error')
         plt.xscale('log')
         plt.yscale('log')
         plt.xlim(.5,50)
@@ -248,10 +302,22 @@ for cosmo in cosmos:
         plt.close('all')
 
         plt.figure(figsize=(10,8))
+        sns.set_theme(style='whitegrid')
+        sns.set_palette('bright')
+
+        for method in methods:
+            if correct_limber:
+                limber_term = np.fromiter((limber_correction(l) for l in l_array),float)
+                cl = np.loadtxt(cls_path+f'{cosmo}_{method}_{zs}.txt')
+                cl = limber_term*cl
+            else:
+                cl = np.loadtxt(cls_path+f'{cosmo}_{method}_{zs}.txt')
+            xi_fft = fft.fht(cl*l_array*correction,dln=dl,mu=mu_j,offset=offset,bias=bs)/theta/2/np.pi
+            plt.plot(theta,xi_fft,label=f'{method}',linestyle='--')
+
         plt.scatter(xr,two_pt,label='Measured',color='k',marker='.')
-        plt.errorbar(xr,two_pt,yerr=sigma_xi/np.log(10)/two_pt,color='k',label=r'Mean error')
-        plt.errorbar(xr,two_pt,yerr=np.diagonal(cov_matr)/np.log(10)/two_pt,fmt='none',color='magenta',label='Cov. matrix error')
-        plt.plot(theta,xi_fft,label='Theory',color='r',linestyle='--')
+        plt.errorbar(xr,two_pt,yerr=sigma_xi/np.log(10)/two_pt,fmt='none',color='r',label=r'Mean error')
+        plt.errorbar(xr,two_pt,yerr=np.diagonal(cov_matr)/np.log(10)/two_pt,color='k',label='Cov. matrix error')
         plt.xscale('log')
         plt.yscale('log')
         plt.xlim(.5,50)
@@ -265,10 +331,22 @@ for cosmo in cosmos:
         plt.close('all')
 
         plt.figure(figsize=(10,8))
+        sns.set_theme(style='whitegrid')
+        sns.set_palette('bright')
+
+        for method in methods:
+            if correct_limber:
+                limber_term = np.fromiter((limber_correction(l) for l in l_array),float)
+                cl = np.loadtxt(cls_path+f'{cosmo}_{method}_{zs}.txt')
+                cl = limber_term*cl
+            else:
+                cl = np.loadtxt(cls_path+f'{cosmo}_{method}_{zs}.txt')
+            xi_fft = fft.fht(cl*l_array*correction,dln=dl,mu=mu_j,offset=offset,bias=bs)/theta/2/np.pi
+            plt.plot(theta,xi_fft,label=f'{method}',linestyle='--')
+
         plt.scatter(xr,two_pt,label='Measured',color='k',marker='.')
-        plt.errorbar(xr_noisy,two_pt_noisy,yerr=sigma_xi_noisy/np.log(10)/two_pt,color='k',label=r'Mean error')
-        plt.errorbar(xr_noisy,two_pt_noisy,yerr=np.diagonal(cov_matr_noisy)/np.log(10)/two_pt_noisy,fmt='none',color='magenta',label='Cov. matrix error')
-        plt.plot(theta,xi_fft,label='Theory',color='r',linestyle='--')
+        plt.errorbar(xr_noisy,two_pt_noisy,yerr=sigma_xi_noisy/np.log(10)/two_pt,fmt='none',color='r',label=r'Mean error')
+        plt.errorbar(xr_noisy,two_pt_noisy,yerr=np.diagonal(cov_matr_noisy)/np.log(10)/two_pt_noisy,color='k',label='Cov. matrix error')
         plt.xscale('log')
         plt.yscale('log')
         plt.xlim(.5,50)
