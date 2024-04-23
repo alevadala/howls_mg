@@ -1,10 +1,9 @@
-##################################################################
+######################################################################
 ## CHANGES:
-## Extended h_max from 100 to 1000, to avoid extrapolations.
-## Changed l range in 10-100000, with 5000 points instead of 10000.
-## Computed the linear and nonlinear power spectra from CAMB with P(z,k) in Mpc^{-3} and k in Mpc^{-1} to avoid multiplication with h. 
-## Otherwise it may cause problems with the interpolatro at high k and then in C(l) at high l.
-##################################################################
+## Extended h_max from 100 to 1000, to avoid extrapolations
+## Changed l range in 10-100000, with 5000 points instead of 10000
+## Changed the purpose of the script
+######################################################################
 
 import numpy as np
 import sys
@@ -56,16 +55,22 @@ l_max = 5
 # Cosmologies tag
 cosmos = ['lcdm', 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1', 'fr6_0.06']
 
+# Methods to compute nonlinear P(z,k)
+methods = ['RHF', 'RHM']
+
 # Define output folder
 outpath = 'Dustgrain_outs/'
-plot_out = outpath+'Cls_plots/'
+pk_out = outpath+f'Pknl/'
+cls_out = outpath+f'Cls/'
+
 print('Creating necessary directories\n')
+
 os.makedirs(outpath, exist_ok=True)
-os.makedirs(outpath+'Pknl/', exist_ok=True)
-os.makedirs(outpath+'Cls/', exist_ok=True)
-os.makedirs(plot_out, exist_ok=True)
+os.makedirs(pk_out, exist_ok=True)
+os.makedirs(cls_out, exist_ok=True)
 
 # directory for Vincenzo
+os.makedirs(outpath+'Vincenzo/Pknl/', exist_ok=True)
 os.makedirs(outpath+'Vincenzo/Cls/', exist_ok=True)
 
 # Angular power spectrum without tomography
@@ -80,7 +85,7 @@ def C_l(ell, zs):
         return res.comoving_radial_distance(z)
 
     def W(z):
-        # Lensing efficiency for sources on the same plae
+        # Lensing efficiency for sources on the same plane
         return 1.5*Omega_M*(H0/c)**2*(1+z)*r(z)*(1-(r(z)/r(zs)))
 
     integrand = lambda z: W(z)**2 * P_zk(z, (ell+.5)/r(z)) / r(z)**2 / E(z)
@@ -93,7 +98,7 @@ for cosmo in cosmos:
 
     print(f'Starting computation for {cosmo}\n')
 
-    # Density parameters and neutrino mass
+    # Density parameters and neutrino masses
 
     # LCDM parameters values
     if cosmo == 'lcdm':
@@ -211,14 +216,57 @@ for cosmo in cosmos:
         pars.set_initial_power(camb.initialpower.InitialPowerLaw(As=A_s, ns=n_s))
         pars.set_dark_energy(w=w0,wa=w_a)
         
-        pars.set_matter_power(redshifts=z_range[::-1], kmax=k_max) # changed from nonlinear=False 
+        pars.set_matter_power(redshifts=z_range[::-1], kmax=k_max, nonlinear=True) # changed from nonlinear=False 
         
         res = camb.get_results(pars)
 
+        res.Params.NonLinearModel.set_params(halofit_version='mead2020')
+        res.calc_power_spectra()
+
         # Computing the non linear Pk in LCDM
         # kh_camb, z_camb, pk_nonlin = res.get_matter_power_spectrum(minkh=k_min, maxkh=k_max, npoints=k_points)
-        kh_camb, z_camb, pk_nonlin = res.get_nonlinear_matter_power_spectrum(hubble_units=False, k_hunit=False)
+        kh_camb, z_camb, pk_nonlin = res.get_nonlinear_matter_power_spectrum(hubble_units=True, k_hunit=True)
 
+        method = 'HM'
+
+        # sigma_state = f'sigma8 for {cosmo} with {method} is {sigma_8:.3f}'
+
+        # with open(pk_out+'sigma8.txt','a',newline='\n') as sfile:
+        #     swriter = csv.writer(sfile)
+        #     swriter.writerows(sigma_state)
+
+        # Saving power spectra, k, and z arrays to file
+        with open(pk_out+f'{cosmo}_{method}.txt','w',newline='\n') as file:
+            writer = csv.writer(file)
+            writer.writerows(pk_nonlin)
+        
+        with open(outpath+'Vincenzo/Pknl/'+f'logPk_{cosmo}_{method}.txt','w',newline='\n') as file:
+            writer = csv.writer(file,delimiter=' ')
+            writer.writerows(np.log10(pk_nonlin))
+        
+        np.savetxt(pk_out+f'k_{cosmo}_{method}.txt',kh_camb)
+        np.savetxt(outpath+'Vincenzo/Pknl/'+f'logk_{cosmo}_{method}.txt',np.log10(kh_camb))
+        np.savetxt(pk_out+f'z_{cosmo}_{method}.txt',z_camb)
+
+        # Setting a fixed grid interpolator to be able to use the Limber approximation
+        pk_interp = interpolate.RectBivariateSpline(z_camb, kh_camb, pk_nonlin, kx=5,ky=5)
+
+        # Renaming the interpolator
+        P_zk = pk_interp
+
+        for zs in zs_values:
+            print(f'Computing C(l) for {cosmo} at zs={zs}\n')
+            # Setting the array for l with logarithically equispaced values
+            l_array = np.logspace(l_min,l_max,ell_points)
+            dl = np.log(l_array[1]/l_array[0]) # Discrete Hankel transform step
+
+            # Compute the C(l)
+            cl = np.fromiter((C_l(l,zs) for l in l_array), float)
+
+            np.savetxt(cls_out+f'{cosmo}_{method}_{zs}.txt',cl)
+
+            # for Vincenzo
+            np.savetxt(outpath+f'Vincenzo/Cls/{cosmo}_{method}_{zs}.txt',np.column_stack((np.log10(l_array),cl)),delimiter=',',header='log ell, C(ell)')
 
     # Getting linear P(z,k) for f(R) from CAMB -> to be fed to ReAct
     else:
@@ -237,11 +285,11 @@ for cosmo in cosmos:
         pars.set_matter_power(redshifts=z_range[::-1], kmax=k_max, nonlinear=False) 
         
         res = camb.get_results(pars)
-        sigma_8 = res.get_sigma8()[-1]
+        sigma_8 = res.get_sigma8_0()
         # To use ReAct we must compute also z and k/h
         # In f(R) we compute the P_NL and then we interpolate to use the Limber approximation
         # kh_camb, z_camb, pk_camb = res.get_matter_power_spectrum(minkh=k_min, maxkh=k_max, npoints=k_points)
-        kh_camb, z_camb, pk_camb = res.get_linear_matter_power_spectrum(hubble_units=False, k_hunit=False)
+        kh_camb, z_camb, pk_camb = res.get_linear_matter_power_spectrum(hubble_units=True, k_hunit=True)
         
         # Model selection and ReAct parameters -> f(R)
         mg_model = 'f(R)'
@@ -262,49 +310,48 @@ for cosmo in cosmos:
         elif 'fr6' in cosmo:
             fR0 = 1e-6
         
-        # # Computing the pseudo power spectrum through nPPF (see ReAct documentation for details)
-        # model_pseudo = 'fulleftppf' # Full linear EFTofDE model with a nPPF screening nonlinear Poisson modification
+        # Computing the pseudo power spectrum through nPPF (see ReAct documentation for details)
+        model_pseudo = 'fulleftppf' # Full linear EFTofDE model with a nPPF screening nonlinear Poisson modification
 
-        # # Setting parameters for pseudo power spectrum and reaction
+        # Setting parameters for pseudo power spectrum and reaction
+        # Set linear theory
 
-        # # Set linear theory
+        #Hu-Sawicki with n=1 (EFT functions)
+        alphak0 = 0.
+        alphab0 = -fR0 # note the minus sign, as above fR0 is the absolute value
+        alpham0 = -fR0 # note the minus sign
+        alphat0 = 0.
+        m2 = -fR0 # note the minus sign
 
-        # #Hu-Sawicki with n=1 (EFT functions)
-        # alphak0 = 0.
-        # alphab0 = -fR0 # note the minus sign, as above fR0 is the absolute value
-        # alpham0 = -fR0 # note the minus sign
-        # alphat0 = 0.
-        # m2 = -fR0 # note the minus sign
-
-        # # For nPPF
-        # extrapars = np.zeros(20)
+        # For nPPF
+        extrapars = np.zeros(20)
             
-        # # Set nonlinear theory
+        # Set nonlinear theory
 
-        # # For nPPF we use the expressions in Eq. 5.6 of arXiv:1608.00522
-        # alpha = 0.5 
-        # omegabd = 0
+        # For nPPF we use the expressions in Eq. 5.6 of arXiv:1608.00522
+        alpha = 0.5 
+        omegabd = 0
 
-        # extrapars[0] = alphak0
-        # extrapars[1] = alphab0
-        # extrapars[2] = alpham0
-        # extrapars[3] = alphat0
-        # extrapars[4] = m2
+        extrapars[0] = alphak0
+        extrapars[1] = alphab0
+        extrapars[2] = alpham0
+        extrapars[3] = alphat0
+        extrapars[4] = m2
 
-        # extrapars[5] = 3
-        # extrapars[6] = 1
-        # extrapars[7] = (4.-alpha)/(1.-alpha)
-        # extrapars[8] = Omega_M**(1/3) * ((Omega_M + 4*(1-Omega_M))**(1/(alpha-1)) *extrapars[5]/3/fR0)**(1./extrapars[7])
-        # extrapars[9] = -1
-        # extrapars[10] = 2/(3*extrapars[7])
-        # extrapars[11] = 3/(alpha-4)
-        # extrapars[12] = -0.8 # Yukawa suppression
+        extrapars[5] = 3
+        extrapars[6] = 1
+        extrapars[7] = (4.-alpha)/(1.-alpha)
+        extrapars[8] = Omega_M**(1/3) * ((Omega_M + 4*(1-Omega_M))**(1/(alpha-1)) *extrapars[5]/3/fR0)**(1./extrapars[7])
+        extrapars[9] = -1
+        extrapars[10] = 2/(3*extrapars[7])
+        extrapars[11] = 3/(alpha-4)
+        extrapars[12] = -0.8 # Yukawa suppression
 
-        # # This parameter scales the background function c(a). 
-        # # Because we assume LCDM H(a), c(a) will not be identically 0 so we shoulds set it by hand
-        # c0 = 0. 
+        # This parameter scales the background function c(a). 
+        # Because we assume LCDM H(a), c(a) will not be identically 0 so we shoulds set it by hand
+        c0 = 0. 
 
-        # extrapars[19] = c0
+        extrapars[19] = c0
 
         # Compute reaction for f(R) with exact solution
 
@@ -317,21 +364,20 @@ for cosmo in cosmos:
                                         verbose=False)
         
         print('\n')
-
+        
         # Compute pseudo power spectrum with nPPF
 
-        # print(f'Computing pseudo power spectrum for {cosmo}\n')
+        print(f'Computing pseudo power spectrum for {cosmo}\n')
 
-        # _, _, _, pseudo = react.compute_reaction_ext(
-        #                                 h, n_s, Omega_M, Omega_b, sigma_8, z_react, kh_camb, pk_camb[0], model_pseudo, 
-        #                                 extrapars, 
-        #                                 is_transfer=False, mass_loop=massloop,
-        #                                 verbose=False)
+        _, _, _, pseudo = react.compute_reaction_ext(
+                                        h, n_s, Omega_M, Omega_b, sigma_8, z_react, kh_camb, pk_camb[0], model_pseudo, 
+                                        extrapars, 
+                                        is_transfer=False, mass_loop=massloop,
+                                        verbose=False)
         
-        # print('\n')
+        print('\n')
 
-        # f(R) non linear power spectrum up to z=2.5
-        # pk_partial = R*pseudo
+        print(f'Computing non-linear power spectrum for {cosmo}\n')
 
         # Non-linear power spectrum for f(R) from CAMB, to have P(z,k) for z > 2.5
         pars_CAMB = camb.CAMBparams(WantTransfer=True, 
@@ -346,59 +392,67 @@ for cosmo in cosmos:
         pars_CAMB.set_initial_power(camb.initialpower.InitialPowerLaw(As=A_s, ns=n_s))
         pars_CAMB.set_dark_energy(w=w0,wa=w_a)
 
-        pars_CAMB.set_matter_power(redshifts=z_range[::-1], kmax=k_max) # changed from nonlinear=False
+        pars_CAMB.set_matter_power(redshifts=z_range[::-1], kmax=k_max, nonlinear=True) # changed from nonlinear=False
 
         res_CAMB = camb.get_results(pars_CAMB)
-        sigma8_CAMB = res_CAMB.get_sigma8()[-1]
+
+        res_CAMB.Params.NonLinearModel.set_params(halofit_version='mead2020')
+        res_CAMB.calc_power_spectra()
+        sigma8_CAMB = res_CAMB.get_sigma8_0()
 
         # We compute the non linear power spectrum with MGCAMB in the full z range
         # kh_nlcamb, z_nlcamb, pk_nlcamb = res.get_matter_power_spectrum(minkh=k_min, maxkh=k_max, npoints=k_points)
-        kh_nlcamb, z_nlcamb, pk_nlcamb = res.get_nonlinear_matter_power_spectrum(hubble_units=False, k_hunit=False)
+        kh_nlcamb, z_nlcamb, pk_nlcamb = res.get_nonlinear_matter_power_spectrum(hubble_units=True, k_hunit=True)
 
-        # The full non linear Pk is built from ReAct for z<2.5 and MGCAMB-HMCode for z>=2.5
-        pk_partial = R*pk_nlcamb[0:62]
-        pk_nonlin = np.append(pk_partial,pk_nlcamb[62::],axis=0)
+        for method in methods:
 
-    # Setting a fixed grid interpolator to be able to use the Limber approximation
-    pk_interp = interpolate.RectBivariateSpline(z_camb, kh_camb, pk_nonlin, kx=5,ky=5)
+            # f(R) non linear power spectrum up to z=2.5
+            if method == 'RHF':
+                pk_partial = R*pseudo
+            elif method == 'RHM':
+                pk_partial = R*pk_nlcamb[0:62]
 
-    # Renaming the interpolator
-    P_zk = pk_interp
+            # sigma_state = f'sigma8 for {cosmo} with {method} is {sigma_8:.3f}'
 
-    for zs in zs_values:
-        print(f'Computing C(l) for {cosmo} at zs={zs}\n')
-        # Setting the array for l with logarithically equispaced values
-        l_array = np.logspace(l_min,l_max,ell_points)
-        dl = np.log(l_array[1]/l_array[0]) # Discrete Hankel transform step
-
-        # Compute the C(l)
-        cl = np.fromiter((C_l(l,zs) for l in l_array), float)
-
-        np.savetxt(outpath+rf'Cls/{cosmo}_{zs}.txt',cl)
-
-        # Plotting and saving C(l) plots
-        plt.figure(figsize=(8,6))
-        plt.loglog(l_array,l_array*(l_array+1)*cl/2/np.pi,label= rf'{plot_label}, $z_s={zs}$',color='k')
-        plt.xlim(l_array.min(),l_array.max())
-        plt.title(r'$\kappa$ - Angular power spectrum',fontsize=16)
-        plt.xlabel(r'$\ell$',fontsize=14)
-        plt.ylabel(r'$\ell \, (\ell + 1) \, P_{\kappa}(\ell) / (2\pi)$',fontsize=14)
-        plt.legend()
-        plt.savefig(plot_out+f'Cls_{cosmo}_zs={zs}.png', dpi=300) 
-        plt.clf()
-        plt.close('all')
+            # with open(pk_out+'sigma8.txt','a',newline='\n') as sfile:
+            #     swriter = csv.writer(sfile)
+            #     swriter.writerows(sigma_state)
         
-        # for Vincenzo
-        np.savetxt(outpath+f'Vincenzo/Cls/{cosmo}_{zs}.txt',np.column_stack((np.log10(l_array),cl)),delimiter=',',header='log ell, C(ell)')
+            # The full non linear Pk is built from ReAct for z<2.5 and MGCAMB-HMCode for z>=2.5
+            pk_nonlin = np.append(pk_partial,pk_nlcamb[62::],axis=0)
 
-    # Saving power spectra, k, and z arrays to file
-    with open(outpath+f'Pknl/{cosmo}.txt','w',newline='\n') as file:
-        writer = csv.writer(file)
-        writer.writerows(pk_nonlin) # Changed from Pk*h^3 
+            # Saving power spectra, k, and z arrays to file
+            with open(pk_out+f'{cosmo}_{method}.txt','w',newline='\n') as file:
+                writer = csv.writer(file)
+                writer.writerows(pk_nonlin)
+            
+            with open(outpath+'Vincenzo/Pknl/'+f'logPk_{cosmo}_{method}.txt','w',newline='\n') as file:
+                writer = csv.writer(file,delimiter=' ')
+                writer.writerows(np.log10(pk_nonlin))
+            
+            np.savetxt(pk_out+f'k_{cosmo}_{method}.txt',kh_camb)
+            np.savetxt(outpath+'Vincenzo/Pknl/'+f'logk_{cosmo}_{method}.txt',np.log10(kh_camb))
+            np.savetxt(pk_out+f'z_{cosmo}_{method}.txt',z_camb)
 
-    # np.savetxt(outpath+f'{cosmo}_Pk_nonlin.txt',pk_nonlin)
-    np.savetxt(outpath+f'/Pknl/{cosmo}_k.txt',kh_camb) # Changed from k*h
-    np.savetxt(outpath+f'/Pknl/{cosmo}_z.txt',z_camb)
+            # Setting a fixed grid interpolator to be able to use the Limber approximation
+            pk_interp = interpolate.RectBivariateSpline(z_camb, kh_camb, pk_nonlin, kx=5,ky=5)
+
+            # Renaming the interpolator
+            P_zk = pk_interp
+
+            for zs in zs_values:
+                print(f'Computing C(l) for {cosmo} with {method} at zs={zs}\n')
+                # Setting the array for l with logarithically equispaced values
+                l_array = np.logspace(l_min,l_max,ell_points)
+                dl = np.log(l_array[1]/l_array[0]) # Discrete Hankel transform step
+
+                # Compute the C(l)
+                cl = np.fromiter((C_l(l,zs) for l in l_array), float)
+
+                np.savetxt(cls_out+f'{cosmo}_{method}_{zs}.txt',cl)
+                
+                # for Vincenzo
+                np.savetxt(outpath+'Vincenzo/Cls/'+f'{cosmo}_{method}_{zs}.txt',np.column_stack((np.log10(l_array),cl)),delimiter=',',header='log ell, C(ell)')
 
 t2 = time()
 
