@@ -122,9 +122,9 @@ for key in cosmo_sets.keys():
         writer = csv.writer(file)
         writer.writerows(pk_nonlin)
 
-np.savetxt(outpath+f'k.txt',kh_camb)
-np.savetxt(outpath+f'log_k.txt',np.log10(kh_camb))
-np.savetxt(outpath+f'z.txt',z_camb)
+    np.savetxt(outpath+f'k_ID={key}_s8={sigma_8:.4f}.txt',kh_camb)
+    np.savetxt(outpath+f'logk_ID={key}_s8={sigma_8:.4f}.txt',np.log10(kh_camb))
+    np.savetxt(outpath+f'z_ID={key}_s8={sigma_8:.4f}.txt',z_camb)
 
 t2 = time()
 
