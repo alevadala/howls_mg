@@ -36,18 +36,24 @@ l_max = 5
 cosmos = ['lcdm', 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1', 'fr6_0.06']
 
 # Define output folder
-outpath = 'Dustgrain_outs/fofr_fit/'
-plot_out = outpath+'Cls_plots/'
+outpath = 'Dustgrain_outs/'
 files_path = '/home/alessandro/code/camb_fR/Pzk/'
+pk_plots = outpath+'Pknl_plots/'
+cls_plots = outpath+'Cls_plots/'
+pk_out = outpath+f'Pknl/'
+cls_out = outpath+f'Cls/'
+
 print('Creating necessary directories\n')
+
 os.makedirs(outpath, exist_ok=True)
-os.makedirs(outpath+'Pknl/', exist_ok=True)
-os.makedirs(outpath+'Cls/', exist_ok=True)
-os.makedirs(plot_out, exist_ok=True)
-
-
-# directory for Vincenzo
+os.makedirs(pk_out, exist_ok=True)
+os.makedirs(cls_out, exist_ok=True)
+os.makedirs(pk_plots, exist_ok=True)
+os.makedirs(cls_plots, exist_ok=True)
+# directories for Vincenzo
+os.makedirs(outpath+'Vincenzo/Pknl/', exist_ok=True)
 os.makedirs(outpath+'Vincenzo/Cls/', exist_ok=True)
+
 
 def E(z):
     return np.sqrt(Omega_M*(1+z)**3+Ode)
@@ -190,12 +196,10 @@ for cosmo in cosmos:
 
     # Filling the P(z,k) array in the CAMB form
     for i in range(len(z_range)):
-        pk = np.loadtxt(files_path+f'{file_root}_pzk_z={z_range[i]:.2f}.dat',usecols=1)
-        pk_nonlin[i,:] = pk*h**3
+        pk_nonlin[i,:] = np.loadtxt(files_path+f'{file_root}_pzk_z={z_range[i]:.2f}.dat',usecols=1)
 
     # Importing the k array
-    kh = np.loadtxt(files_path+f'{file_root}_pzk_z={z_range[i]:.2f}.dat',usecols=0)
-    kh_camb = kh*h
+    kh_camb = np.loadtxt(files_path+f'{file_root}_pzk_z={z_range[i]:.2f}.dat',usecols=0)
 
     # Omega Lambda for the cosmology
     Ode = 1-Omega_M-(Omega_nuh2/h**2)
@@ -215,31 +219,37 @@ for cosmo in cosmos:
         # Compute the C(l)
         cl = np.fromiter((C_l(l,zs) for l in l_array), float)
 
-        np.savetxt(outpath+rf'Cls/{cosmo}_{zs}.txt',cl)
+        np.savetxt(cls_out+f'{cosmo}_Win_{zs}.txt',cl)
 
-        # Plotting and saving C(l) plots
-        plt.figure(figsize=(8,6))
-        plt.loglog(l_array,l_array*(l_array+1)*cl/2/np.pi,label= rf'{plot_label}, $z_s={zs}$',color='k')
-        plt.xlim(l_array.min(),l_array.max())
-        plt.title(r'$\kappa$ - Angular power spectrum',fontsize=16)
-        plt.xlabel(r'$\ell$',fontsize=14)
-        plt.ylabel(r'$\ell \, (\ell + 1) \, P_{\kappa}(\ell) / (2\pi)$',fontsize=14)
-        plt.legend()
-        plt.savefig(plot_out+f'Cls_{cosmo}_zs={zs}.png', dpi=300) 
-        plt.clf()
-        plt.close('all')
+        # # Plotting and saving C(l) plots
+        # plt.figure(figsize=(8,6))
+        # plt.loglog(l_array,l_array*(l_array+1)*cl/2/np.pi,label= rf'{plot_label}, $z_s={zs}$',color='k')
+        # plt.xlim(l_array.min(),l_array.max())
+        # plt.title(r'$\kappa$ - Angular power spectrum',fontsize=16)
+        # plt.xlabel(r'$\ell$',fontsize=14)
+        # plt.ylabel(r'$\ell \, (\ell + 1) \, P_{\kappa}(\ell) / (2\pi)$',fontsize=14)
+        # plt.legend()
+        # plt.savefig(cls_plots+f'Cls_{cosmo}_zs={zs}.png', dpi=300) 
+        # plt.clf()
+        # plt.close('all')
         
         # for Vincenzo
-        np.savetxt(outpath+f'Vincenzo/Cls/{cosmo}_{zs}.txt',np.column_stack((np.log10(l_array),cl)),delimiter=',',header='log ell, C(ell)')
+        np.savetxt(outpath+f'Vincenzo/Cls/{cosmo}_Win_{zs}.txt',np.column_stack((np.log10(l_array),cl)),delimiter=',',header='log ell, C(ell)')
 
     # Saving power spectra, k, and z arrays to file
-    with open(outpath+f'Pknl/{cosmo}.txt','w',newline='\n') as file:
+    with open(pk_out+f'{cosmo}_Win.txt','w',newline='\n') as file:
         writer = csv.writer(file)
         writer.writerows(pk_nonlin)
 
     # np.savetxt(outpath+f'{cosmo}_Pk_nonlin.txt',pk_nonlin)
-    np.savetxt(outpath+f'/Pknl/{cosmo}_k.txt',kh_camb)
-    np.savetxt(outpath+f'/Pknl/{cosmo}_z.txt',z_range)
+    np.savetxt(pk_out+f'k_{cosmo}_Win.txt',kh_camb)
+    np.savetxt(pk_out+f'z_{cosmo}_Win.txt',z_range)
+
+    with open(outpath+'Vincenzo/Pknl/'+f'logPk_{cosmo}_Win.txt','w',newline='\n') as file:
+        writer = csv.writer(file,delimiter=' ')
+        writer.writerows(np.log10(pk_nonlin))
+    
+    np.savetxt(outpath+'Vincenzo/Pknl/'+f'logk_{cosmo}_Win.txt',np.log10(kh_camb))
 
 t2 = time()
 
