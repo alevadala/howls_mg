@@ -58,6 +58,9 @@ cosmos = ['lcdm', 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1
 # Methods to compute nonlinear P(z,k)
 methods = ['RHF', 'RHM']
 
+# Set k/h and P(k) in (Mpc/h)^3 if True, k and P(k) in Mpc^3 if False
+hunits = True
+
 # Define output folder
 outpath = 'Dustgrain_outs/'
 pk_out = outpath+f'Pknl/'
@@ -225,7 +228,7 @@ for cosmo in cosmos:
 
         # Computing the non linear Pk in LCDM
         # kh_camb, z_camb, pk_nonlin = res.get_matter_power_spectrum(minkh=k_min, maxkh=k_max, npoints=k_points)
-        kh_camb, z_camb, pk_nonlin = res.get_nonlinear_matter_power_spectrum(hubble_units=True, k_hunit=True)
+        kh_camb, z_camb, pk_nonlin = res.get_nonlinear_matter_power_spectrum(hubble_units=hunits, k_hunit=hunits)
 
         method = 'HM'
 
@@ -289,7 +292,7 @@ for cosmo in cosmos:
         # To use ReAct we must compute also z and k/h
         # In f(R) we compute the P_NL and then we interpolate to use the Limber approximation
         # kh_camb, z_camb, pk_camb = res.get_matter_power_spectrum(minkh=k_min, maxkh=k_max, npoints=k_points)
-        kh_camb, z_camb, pk_camb = res.get_linear_matter_power_spectrum(hubble_units=True, k_hunit=True)
+        kh_camb, z_camb, pk_camb = res.get_linear_matter_power_spectrum(hubble_units=hunits, k_hunit=hunits)
         
         # Model selection and ReAct parameters -> f(R)
         mg_model = 'f(R)'
@@ -402,7 +405,7 @@ for cosmo in cosmos:
 
         # We compute the non linear power spectrum with MGCAMB in the full z range
         # kh_nlcamb, z_nlcamb, pk_nlcamb = res.get_matter_power_spectrum(minkh=k_min, maxkh=k_max, npoints=k_points)
-        kh_nlcamb, z_nlcamb, pk_nlcamb = res.get_nonlinear_matter_power_spectrum(hubble_units=True, k_hunit=True)
+        kh_nlcamb, z_nlcamb, pk_nlcamb = res.get_nonlinear_matter_power_spectrum(hubble_units=hunits, k_hunit=hunits)
 
         for method in methods:
 
