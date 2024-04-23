@@ -19,9 +19,9 @@ H0 = h*100 # Hubble constant in km/s/Mpc
 plot_label = "fR4"
 
 # Load matter power spectrum from file (assuming it contains only P_kappa(ell) values)
-Pnl = readdlm("fr4.txt")
-k = readdlm("fr4_k.txt")
-z = readdlm("fr4_z.txt")
+Pnl = readdlm("fr4_RHF.txt")
+k = readdlm("k_fr4_RHF.txt")
+z = readdlm("z_fr4_RHF.txt")
 
 zs = 0.5
 
@@ -75,6 +75,7 @@ end
 
 # Compute xi_plus(theta) for each theta value
 ξ = zeros(length(θ))
+
 for (i, val_θ) in enumerate(θ)
     integrand_ℓ(ℓ) = integrand(val_θ, ℓ)
     ξ[i], _ = quadgk(integrand_ℓ, ℓ)
