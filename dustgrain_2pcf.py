@@ -38,6 +38,7 @@ os.makedirs(mean_out, exist_ok=True)
 os.makedirs(noisy_out, exist_ok=True)
 os.makedirs(vincenzo, exist_ok=True)
 
+h = 0.6731
 
 # DUSTGRAIN redshift values
 zs_values = [0.5, 1.0, 2.0, 4.0]
