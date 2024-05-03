@@ -1,9 +1,5 @@
 import numpy as np
 
-from scipy import integrate, interpolate, constants as cs
-
-import matplotlib.pyplot as plt
-
 import csv
 
 import os
@@ -27,11 +23,6 @@ z_range = np.linspace(0, 4, 100)
 # DUSTGRAIN redshift values
 zs_values = [0.5, 1.0, 2.0, 4.0]
 
-# Number of values of ell to integrate over
-ell_points = 5000
-l_min = 1
-l_max = 5
-
 # Cosmologies tag
 cosmos = ['lcdm', 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1', 'fr6_0.06']
 
@@ -39,43 +30,15 @@ cosmos = ['lcdm', 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1
 outpath = 'Dustgrain_outs/'
 files_path = '/home/alessandro/code/camb_fR/Pzk/'
 pk_plots = outpath+'Pknl_plots/'
-cls_plots = outpath+'Cls_plots/'
 pk_out = outpath+f'Pknl/'
-cls_out = outpath+f'Cls/'
 
 print('Creating necessary directories\n')
 
 os.makedirs(outpath, exist_ok=True)
 os.makedirs(pk_out, exist_ok=True)
-os.makedirs(cls_out, exist_ok=True)
 os.makedirs(pk_plots, exist_ok=True)
-os.makedirs(cls_plots, exist_ok=True)
 # directories for Vincenzo
 os.makedirs(outpath+'Vincenzo/Pknl/', exist_ok=True)
-os.makedirs(outpath+'Vincenzo/Cls/', exist_ok=True)
-
-
-def E(z):
-    return np.sqrt(Omega_M*(1+z)**3+Ode)
-
-def r(z):
-    c = cs.c/1e3
-    integrand = lambda z_prime: 1 / E(z_prime)
-    result = integrate.quad(integrand, 0., z)[0]
-    return (c/H0)*result
-
-# Angular power spectrum without tomography
-def C_l(ell, zs):
-    
-    c = cs.c/1e3 # in km/s
-
-    def W(z):
-        # Lensing efficiency for sources on the same plae
-        return 1.5*Omega_M*(H0/c)**2*(1+z)*r(z)*(1-(r(z)/r(zs)))
-
-    integrand = lambda z: W(z)**2 * P_zk(z, (ell+.5)/r(z)) / r(z)**2 / E(z)
-    return (c/H0)*integrate.quad(integrand, 0., zs)[0]
-
 
 t1 = time()
 
@@ -200,41 +163,6 @@ for cosmo in cosmos:
 
     # Importing the k array
     kh_camb = np.loadtxt(files_path+f'{file_root}_pzk_z={z_range[i]:.2f}.dat',usecols=0)
-
-    # Omega Lambda for the cosmology
-    Ode = 1-Omega_M-(Omega_nuh2/h**2)
-
-    # Setting a fixed grid interpolator to be able to use the Limber approximation
-    pk_interp = interpolate.RectBivariateSpline(z_range, kh_camb, pk_nonlin, kx=5,ky=5)
-
-    # Renaming the interpolator
-    P_zk = pk_interp
-
-    for zs in zs_values:
-        print(f'Computing C(l) for {cosmo} at zs={zs}\n')
-        # Setting the array for l with logarithically equispaced values
-        l_array = np.logspace(l_min,l_max,ell_points)
-        dl = np.log(l_array[1]/l_array[0]) # Discrete Hankel transform step
-
-        # Compute the C(l)
-        cl = np.fromiter((C_l(l,zs) for l in l_array), float)
-
-        np.savetxt(cls_out+f'{cosmo}_Win_{zs}.txt',cl)
-
-        # # Plotting and saving C(l) plots
-        # plt.figure(figsize=(8,6))
-        # plt.loglog(l_array,l_array*(l_array+1)*cl/2/np.pi,label= rf'{plot_label}, $z_s={zs}$',color='k')
-        # plt.xlim(l_array.min(),l_array.max())
-        # plt.title(r'$\kappa$ - Angular power spectrum',fontsize=16)
-        # plt.xlabel(r'$\ell$',fontsize=14)
-        # plt.ylabel(r'$\ell \, (\ell + 1) \, P_{\kappa}(\ell) / (2\pi)$',fontsize=14)
-        # plt.legend()
-        # plt.savefig(cls_plots+f'Cls_{cosmo}_zs={zs}.png', dpi=300) 
-        # plt.clf()
-        # plt.close('all')
-        
-        # for Vincenzo
-        np.savetxt(outpath+f'Vincenzo/Cls/{cosmo}_Win_{zs}.txt',np.column_stack((np.log10(l_array),cl)),delimiter=',',header='log ell, C(ell)')
 
     # Saving power spectra, k, and z arrays to file
     with open(pk_out+f'{cosmo}_Win.txt','w',newline='\n') as file:
