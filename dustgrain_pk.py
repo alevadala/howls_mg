@@ -1,10 +1,3 @@
-######################################################################
-## CHANGES:
-## Extended h_max from 100 to 1000, to avoid extrapolations
-## Changed l range in 10-100000, with 5000 points instead of 10000
-## Changed the purpose of the script
-######################################################################
-
 import numpy as np
 import sys
 sys.path.insert(0, '/home/alessandro/code')
@@ -22,7 +15,6 @@ import os
 from time import time
 
 import pyreact
-
 
 # Define cosmological parameters for DUSTGRAIN-pathfinder simulations
 # as they appear in https://doi:10.1093/mnras/sty2465 for LCDM background
@@ -52,6 +44,9 @@ ell_points = 5000
 l_min = 1
 l_max = 5
 
+# Speed of light in vacuum in km/s
+c = cs.c/1e3
+
 # Cosmologies tag
 cosmos = ['lcdm', 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1', 'fr6_0.06']
 
@@ -64,36 +59,14 @@ hunits = True
 # Define output folder
 outpath = 'Dustgrain_outs/'
 pk_out = outpath+f'Pknl/'
-cls_out = outpath+f'Cls/'
 
 print('Creating necessary directories\n')
 
 os.makedirs(outpath, exist_ok=True)
 os.makedirs(pk_out, exist_ok=True)
-os.makedirs(cls_out, exist_ok=True)
 
 # directory for Vincenzo
 os.makedirs(outpath+'Vincenzo/Pknl/', exist_ok=True)
-os.makedirs(outpath+'Vincenzo/Cls/', exist_ok=True)
-
-# Angular power spectrum without tomography
-def C_l(ell, zs):
-    
-    c = cs.c/1e3 # in km/s
-    
-    def E(z): # dimensionless Hubble parameter
-        return res.hubble_parameter(z)/H0
-    
-    def r(z): # comoving radial distance in Mpc
-        return res.comoving_radial_distance(z)
-
-    def W(z):
-        # Lensing efficiency for sources on the same plane
-        return 1.5*Omega_M*(H0/c)**2*(1+z)*r(z)*(1-(r(z)/r(zs)))
-
-    integrand = lambda z: W(z)**2 * P_zk(z, (ell+.5)/r(z)) / r(z)**2 / E(z)
-    return (c/H0)*integrate.quad(integrand, 0., zs)[0]
-
 
 t1 = time()
 
@@ -232,12 +205,6 @@ for cosmo in cosmos:
 
         method = 'HM'
 
-        # sigma_state = f'sigma8 for {cosmo} with {method} is {sigma_8:.3f}'
-
-        # with open(pk_out+'sigma8.txt','a',newline='\n') as sfile:
-        #     swriter = csv.writer(sfile)
-        #     swriter.writerows(sigma_state)
-
         # Saving power spectra, k, and z arrays to file
         with open(pk_out+f'{cosmo}_{method}.txt','w',newline='\n') as file:
             writer = csv.writer(file)
@@ -250,26 +217,6 @@ for cosmo in cosmos:
         np.savetxt(pk_out+f'k_{cosmo}_{method}.txt',kh_camb)
         np.savetxt(outpath+'Vincenzo/Pknl/'+f'logk_{cosmo}_{method}.txt',np.log10(kh_camb))
         np.savetxt(pk_out+f'z_{cosmo}_{method}.txt',z_camb)
-
-        # Setting a fixed grid interpolator to be able to use the Limber approximation
-        pk_interp = interpolate.RectBivariateSpline(z_camb, kh_camb, pk_nonlin, kx=5,ky=5)
-
-        # Renaming the interpolator
-        P_zk = pk_interp
-
-        for zs in zs_values:
-            print(f'Computing C(l) for {cosmo} at zs={zs}\n')
-            # Setting the array for l with logarithically equispaced values
-            l_array = np.logspace(l_min,l_max,ell_points)
-            dl = np.log(l_array[1]/l_array[0]) # Discrete Hankel transform step
-
-            # Compute the C(l)
-            cl = np.fromiter((C_l(l,zs) for l in l_array), float)
-
-            np.savetxt(cls_out+f'{cosmo}_{method}_{zs}.txt',cl)
-
-            # for Vincenzo
-            np.savetxt(outpath+f'Vincenzo/Cls/{cosmo}_{method}_{zs}.txt',np.column_stack((np.log10(l_array),cl)),delimiter=',',header='log ell, C(ell)')
 
     # Getting linear P(z,k) for f(R) from CAMB -> to be fed to ReAct
     else:
@@ -289,6 +236,7 @@ for cosmo in cosmos:
         
         res = camb.get_results(pars)
         sigma_8 = res.get_sigma8_0()
+        
         # To use ReAct we must compute also z and k/h
         # In f(R) we compute the P_NL and then we interpolate to use the Limber approximation
         # kh_camb, z_camb, pk_camb = res.get_matter_power_spectrum(minkh=k_min, maxkh=k_max, npoints=k_points)
@@ -414,12 +362,6 @@ for cosmo in cosmos:
                 pk_partial = R*pseudo
             elif method == 'RHM':
                 pk_partial = R*pk_nlcamb[0:62]
-
-            # sigma_state = f'sigma8 for {cosmo} with {method} is {sigma_8:.3f}'
-
-            # with open(pk_out+'sigma8.txt','a',newline='\n') as sfile:
-            #     swriter = csv.writer(sfile)
-            #     swriter.writerows(sigma_state)
         
             # The full non linear Pk is built from ReAct for z<2.5 and MGCAMB-HMCode for z>=2.5
             pk_nonlin = np.append(pk_partial,pk_nlcamb[62::],axis=0)
@@ -436,26 +378,6 @@ for cosmo in cosmos:
             np.savetxt(pk_out+f'k_{cosmo}_{method}.txt',kh_camb)
             np.savetxt(outpath+'Vincenzo/Pknl/'+f'logk_{cosmo}_{method}.txt',np.log10(kh_camb))
             np.savetxt(pk_out+f'z_{cosmo}_{method}.txt',z_camb)
-
-            # Setting a fixed grid interpolator to be able to use the Limber approximation
-            pk_interp = interpolate.RectBivariateSpline(z_camb, kh_camb, pk_nonlin, kx=5,ky=5)
-
-            # Renaming the interpolator
-            P_zk = pk_interp
-
-            for zs in zs_values:
-                print(f'Computing C(l) for {cosmo} with {method} at zs={zs}\n')
-                # Setting the array for l with logarithically equispaced values
-                l_array = np.logspace(l_min,l_max,ell_points)
-                dl = np.log(l_array[1]/l_array[0]) # Discrete Hankel transform step
-
-                # Compute the C(l)
-                cl = np.fromiter((C_l(l,zs) for l in l_array), float)
-
-                np.savetxt(cls_out+f'{cosmo}_{method}_{zs}.txt',cl)
-                
-                # for Vincenzo
-                np.savetxt(outpath+'Vincenzo/Cls/'+f'{cosmo}_{method}_{zs}.txt',np.column_stack((np.log10(l_array),cl)),delimiter=',',header='log ell, C(ell)')
 
 t2 = time()
 
