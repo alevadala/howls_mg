@@ -1,36 +1,25 @@
 import numpy as np
-import sys
 
 import euclidemu2 as ee2
 
-import classy
-
 import csv
 
-from scipy import integrate, interpolate, fft, constants as cs
-
 import os
-import matplotlib.pyplot as plt
 
 from time import time
 
 # Define output folder
 outpath = 'Dustgrain_outs/'
 pk_plots = outpath+'Pknl_plots/'
-cls_plots = outpath+'Cls_plots/'
 pk_out = outpath+f'Pknl/'
-cls_out = outpath+f'Cls/'
 
 print('Creating necessary directories\n')
 
 os.makedirs(outpath, exist_ok=True)
 os.makedirs(pk_out, exist_ok=True)
-os.makedirs(cls_out, exist_ok=True)
 os.makedirs(pk_plots, exist_ok=True)
-os.makedirs(cls_plots, exist_ok=True)
 # directory for Vincenzo
 os.makedirs(outpath+'Vincenzo/Pknl/', exist_ok=True)
-os.makedirs(outpath+'Vincenzo/Cls/', exist_ok=True)
 
 # Cosmological parameters according to DUSTGRAIN-pathfinder simulations for LCDM
 cosmo_par = {
@@ -81,32 +70,6 @@ zs_values = [0.5, 1.0, 2.0, 4.0]
 
 k_range = np.geomspace(k_min,k_max,300)
 
-# Number of values of ell to integrate over
-ell_points = 5000
-l_min = 1
-l_max = 5
-
-def E(z):
-    return np.sqrt(Omega_M*(1+z)**3+Ode)
-
-def r(z):
-    c = cs.c/1e3
-    integrand = lambda z_prime: 1 / E(z_prime)
-    result = integrate.quad(integrand, 0., z)[0]
-    return (c/H0)*result
-
-# Angular power spectrum without tomography
-def C_l(ell, zs):
-    
-    c = cs.c/1e3
-
-    def W(z):
-        
-        return 1.5*Omega_M*(H0/c)**2*(1+z)*r(z)*(1-(r(z)/r(zs)))
-
-    integrand = lambda z: W(z)**2 * P_zk(z, (ell+.5)/r(z)) / r(z)**2 / E(z)
-    return (c/H0)*integrate.quad(integrand, 0., zs)[0]
-
 print('Computing P(k) with EuclidEmulator2\n')
 
 k_emu, pnl, plin, b = ee2.get_pnonlin(cosmo_par, z_range, k_range)
@@ -132,21 +95,3 @@ with open(outpath+'Vincenzo/Pknl/'+f'logPk_{cosmo}_{method}.txt','w',newline='\n
     writer.writerows(np.log10(pk_nonlin))
 
 np.savetxt(outpath+'Vincenzo/Pknl/'+f'logk_{cosmo}_{method}.txt',np.log10(k_emu))
-
-pk_interp = interpolate.RectBivariateSpline(z_range, k_emu, pk_nonlin, kx=5,ky=5)
-
-P_zk = pk_interp
-
-for zs in zs_values:
-    print(f'Computing C(l) for {cosmo} at zs={zs}\n')
-    # Setting the array for l with logarithically equispaced values
-    l_array = np.logspace(l_min,l_max,ell_points)
-    dl = np.log(l_array[1]/l_array[0]) # Discrete Hankel transform step
-
-    # Compute the C(l)
-    cl = np.fromiter((C_l(l,zs) for l in l_array), float)
-
-    np.savetxt(cls_out+f'{cosmo}_{method}_{zs}.txt',cl)
-
-    # for Vincenzo
-    np.savetxt(outpath+f'Vincenzo/Cls/{cosmo}_{method}_{zs}.txt',np.column_stack((np.log10(l_array),cl)),delimiter=',',header='log ell, C(ell)')
