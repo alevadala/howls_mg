@@ -10,14 +10,12 @@ from time import time
 
 # Define output folder
 outpath = 'Dustgrain_outs/'
-pk_plots = outpath+'Pknl_plots/'
 pk_out = outpath+f'Pknl/'
 
 print('Creating necessary directories\n')
 
 os.makedirs(outpath, exist_ok=True)
 os.makedirs(pk_out, exist_ok=True)
-os.makedirs(pk_plots, exist_ok=True)
 # directory for Vincenzo
 os.makedirs(outpath+'Vincenzo/Pknl/', exist_ok=True)
 
@@ -70,6 +68,8 @@ zs_values = [0.5, 1.0, 2.0, 4.0]
 
 k_range = np.geomspace(k_min,k_max,300)
 
+t1 = time()
+
 print('Computing P(k) with EuclidEmulator2\n')
 
 k_emu, pnl, plin, b = ee2.get_pnonlin(cosmo_par, z_range, k_range)
@@ -95,3 +95,7 @@ with open(outpath+'Vincenzo/Pknl/'+f'logPk_{cosmo}_{method}.txt','w',newline='\n
     writer.writerows(np.log10(pk_nonlin))
 
 np.savetxt(outpath+'Vincenzo/Pknl/'+f'logk_{cosmo}_{method}.txt',np.log10(k_emu))
+
+t2 = time()
+
+print(f'Total time: {int((t2-t1)/60)} min {(t2-t1)%60:.2f} s')
