@@ -102,6 +102,8 @@ for key in cosmo_sets.keys():
     res = camb.get_results(pars)
     sigma_8 = res.get_sigma8()[-1]
 
+    # cls = res.get_source_cls_dict(lmax=2500)
+
     # Checking that computed sigma8 matches the desired sigma8
     if (round(sigma_8,4)-target_sig8) == 0:
         print('Sigma 8 value is correct!\n')
@@ -113,18 +115,18 @@ for key in cosmo_sets.keys():
     kh_camb, z_camb, pk_nonlin = res.get_nonlinear_matter_power_spectrum(hubble_units=False, k_hunit=False)
 
     # Saving power spectra, k, and z arrays to file
-    print('Saving on file\n')
-    with open(pk_path+f'logPk_cosmoslics_ID={key}_s8={sigma_8:.4f}.txt','w',newline='\n') as file:
-        writer = csv.writer(file)
-        writer.writerows(np.log10(pk_nonlin))
+    # print('Saving on file\n')
+    # with open(pk_path+f'logPk_cosmoslics_ID={key}_s8={sigma_8:.4f}.txt','w',newline='\n') as file:
+    #     writer = csv.writer(file)
+    #     writer.writerows(np.log10(pk_nonlin))
     
-    with open(pk_path+f'Pk_cosmoslics_ID={key}_s8={sigma_8:.4f}.txt','w',newline='\n') as file:
-        writer = csv.writer(file)
-        writer.writerows(pk_nonlin)
+    # with open(pk_path+f'Pk_cosmoslics_ID={key}_s8={sigma_8:.4f}.txt','w',newline='\n') as file:
+    #     writer = csv.writer(file)
+    #     writer.writerows(pk_nonlin)
 
-    np.savetxt(outpath+f'k_ID={key}_s8={sigma_8:.4f}.txt',kh_camb)
-    np.savetxt(outpath+f'logk_ID={key}_s8={sigma_8:.4f}.txt',np.log10(kh_camb))
-    np.savetxt(outpath+f'z_ID={key}_s8={sigma_8:.4f}.txt',z_camb)
+    # np.savetxt(outpath+f'k_ID={key}_s8={sigma_8:.4f}.txt',kh_camb)
+    # np.savetxt(outpath+f'logk_ID={key}_s8={sigma_8:.4f}.txt',np.log10(kh_camb))
+    # np.savetxt(outpath+f'z_ID={key}_s8={sigma_8:.4f}.txt',z_camb)
 
 t2 = time()
 
