@@ -65,12 +65,12 @@ def r(z):
     result = integrate.quad(integrand, 0., z)[0]
     return (c/H0)*result
 
+def W(z):
+    # Lensing efficiency for sources on the same plane
+    return 1.5*Omega_M*(H0/c)**2*(1+z)*r(z)*(1-(r(z)/r(zs)))
+
 # Angular power spectrum
 def C_l(ell, zs):
-    
-    def W(z):
-        # Lensing efficiency for sources on the same plane
-        return 1.5*Omega_M*(H0/c)**2*(1+z)*r(z)*(1-(r(z)/r(zs)))
 
     integrand = lambda z: W(z)**2 * P_zk(z, (ell+.5)/r(z)) / r(z)**2 / E(z)
     return (c/H0)*integrate.quad(integrand, 0., zs)[0]
