@@ -29,14 +29,12 @@ cosmos = ['lcdm', 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1
 # Define output folder
 outpath = 'Dustgrain_outs/'
 files_path = '/home/alessandro/code/camb_fR/Pzk/'
-pk_plots = outpath+'Pknl_plots/'
 pk_out = outpath+f'Pknl/'
 
 print('Creating necessary directories\n')
 
 os.makedirs(outpath, exist_ok=True)
 os.makedirs(pk_out, exist_ok=True)
-os.makedirs(pk_plots, exist_ok=True)
 # directories for Vincenzo
 os.makedirs(outpath+'Vincenzo/Pknl/', exist_ok=True)
 
