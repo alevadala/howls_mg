@@ -74,11 +74,8 @@ for key in cosmo_sets.keys():
     print('Computing initial transfer functions\n')
     # Computing initial transfer functions
     pars = camb.CAMBparams(WantTransfer=True, 
-                            Want_CMB=False, Want_CMB_lensing=False, DoLensing=False, 
                             NonLinear = 'NonLinear_pk',
                             omnuh2=0,
-                            WantTensors=False, WantVectors=False, WantCls=False, WantDerivedParameters=False,
-                            want_zdrag=False, want_zstar=False,
                             MG_flag = 0)
 
     pars.set_cosmology(H0=h*100, ombh2=Ob*h**2, omch2=Oc*h**2, omk=0, mnu=mnu)
@@ -95,14 +92,14 @@ for key in cosmo_sets.keys():
 
     As_target = As*(target_sig8/sigma8_init)**2
 
+    print(f'As for model {key} = {As_target}\n')
+
     # Setting CAMB with the desired AS
     pars.set_initial_power(camb.initialpower.InitialPowerLaw(As=As_target, ns=ns))
     pars.set_matter_power(redshifts=z_range[::-1], kmax=k_max)
 
     res = camb.get_results(pars)
     sigma_8 = res.get_sigma8()[-1]
-
-    # cls = res.get_source_cls_dict(lmax=2500)
 
     # Checking that computed sigma8 matches the desired sigma8
     if (round(sigma_8,4)-target_sig8) == 0:
@@ -113,6 +110,10 @@ for key in cosmo_sets.keys():
     # Computing non-linear P(z,k) in correct units
     print(f'Computing non-linear P(z,k) for sigma8={sigma_8:.4f}\n')
     kh_camb, z_camb, pk_nonlin = res.get_nonlinear_matter_power_spectrum(hubble_units=False, k_hunit=False)
+
+    cls = res.get_source_cls_dict()
+    print(cls)
+    print('\n')
 
     # Saving power spectra, k, and z arrays to file
     # print('Saving on file\n')
