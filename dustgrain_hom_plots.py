@@ -10,7 +10,8 @@ from time import time
 # Output path
 outpath = 'Dustgrain_outs/'
 homs_path = outpath+'HOMs/'
-dv_path = '/home/alessandro/phd/kappa_moments/'
+dv_path = '/home/alessandro/phd/MG_Paper_outputs_FINAL_mean_DVs/outputs_FINAL_mean_DVs/mean_DVs/kappa_moments/'
+#'/home/alessandro/phd/kappa_moments/'
 
 homs_plots = outpath+'HOMs_plots/'
 
@@ -21,10 +22,10 @@ os.makedirs(homs_plots, exist_ok=True)
 zs_values = [0.5, 1.0, 2.0, 4.0]
 
 # Cosmologies tag
-cosmos = ['lcdm', 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1', 'fr6_0.06']
+cosmos = ['lcdm']#, 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1', 'fr6_0.06']
 
 # Smoothing scale range (in arcmins)
-theta_s = np.linspace(2,10,50)
+theta_s = np.linspace(.5,22,50)
 
 # Fiducial values for Q parameters (in LCDM)
 fid_Q2 = 1
@@ -34,7 +35,7 @@ fid_Q4 = 12*7.29+4*16.23
 fid_Q = [fid_Q2, fid_Q3, fid_Q4]
 
 # Headers of the HOMs file
-homs_cols = ['smoothing','k2','sigk2','k3','sigk3','k4','sigk4','S3','sigS3','S4','sigS4']
+homs_cols = ['smoothing','k2','sigk2','k3','sigk3','k4','sigk4']#,'S3','sigS3','S4','sigS4']
 
 t1 = time()
 
@@ -99,15 +100,15 @@ for cosmo in cosmos:
 
         for j,zs in enumerate(zs_values):
 
-            hom_file = dv_path+f'LCDM_DUSTGRAIN_convergence_true_{name_cosmo}_z_{zs}_filter_tophat_scales_[15.97 32.02 64.03]_pixels_kappa_moments.txt'
+            hom_file = dv_path+f'LCDM_DUSTGRAIN_convergence_true_{name_cosmo}_z_{zs}_filter_tophat_scales_[ 4  8 16 32]_pixels_kappa_moments.txt'
             hom_meas = np.loadtxt(hom_file)
-            arcm = np.fromiter((hom_meas[i][0] for i in range(3)),float)
+            arcm = np.fromiter((hom_meas[i][0] for i in range(len(hom_meas))),float)
 
             k_index = homs_cols.index('k'+f'{t}')
             err_index = homs_cols.index('sigk'+f'{t}')
                         
-            k_meas = np.fromiter((hom_meas[i][k_index] for i in range(3)),float)
-            k_err = np.fromiter((hom_meas[i][err_index] for i in range(3)),float)
+            k_meas = np.fromiter((hom_meas[i][k_index] for i in range(len(hom_meas))),float)
+            k_err = np.fromiter((hom_meas[i][err_index] for i in range(len(hom_meas))),float)
 
             for method in methods:
                 
@@ -115,12 +116,14 @@ for cosmo in cosmos:
 
                 Q_fit = np.loadtxt(homs_path+f'{cosmo}_{method}_{zs}_Q{t}_fit.txt')
                 
-                axs[i,j].semilogy(theta_s,Q_fit*Ct,label=f'{method} - '+r'$\mathcal{Q}$'+f'={Q_fit:.2f}')
+                axs[i,j].plot(theta_s,Q_fit*Ct,label=f'{method} - '+r'$\mathcal{Q}$'+f'={Q_fit:.2f}')
                 # axs[i,j].semilogy(theta_s,fid_Q[i]*Ct,label=r'$\mathcal{Q}$ fid'+f'={fid_Q[i]}',linestyle='--')
 
             axs[i,j].scatter(arcm,k_meas,marker='.',color='k',label='Measurements')
             axs[i,j].errorbar(arcm,k_meas,yerr=k_err,fmt='None',color='k')
-            axs[i,j].set_xlim(2,10)
+            axs[i,j].set_xlim(2,20)
+            axs[i,j].set_yscale('log')
+            # axs[i,j].margins(y=-0.2)
             axs[i,j].legend()
             axs[i,j].set(xlabel=r'$\theta_s$ (arcmin)')
             axs[i,j].set_title(rf'{plot_label} - $\langle \kappa^{t} \rangle$ - $z_s$={zs}')
@@ -130,16 +133,16 @@ for cosmo in cosmos:
 
     for zs in zs_values:
 
-        hom_file = dv_path+f'LCDM_DUSTGRAIN_convergence_true_{name_cosmo}_z_{zs}_filter_tophat_scales_[15.97 32.02 64.03]_pixels_kappa_moments.txt'
+        hom_file = dv_path+f'LCDM_DUSTGRAIN_convergence_true_{name_cosmo}_z_{zs}_filter_tophat_scales_[ 4  8 16 32]_pixels_kappa_moments.txt'
         hom_meas = np.loadtxt(hom_file)
-        arcm = np.fromiter((hom_meas[i][0] for i in range(3)),float)
+        arcm = np.fromiter((hom_meas[i][0] for i in range(len(hom_meas))),float)
 
         for i,t in enumerate([2,3,4]):
 
             k_index = homs_cols.index('k'+f'{t}')
             err_index = homs_cols.index('sigk'+f'{t}')
-            k_meas = np.fromiter((hom_meas[i][k_index] for i in range(3)),float)
-            k_err = np.fromiter((hom_meas[i][err_index] for i in range(3)),float)
+            k_meas = np.fromiter((hom_meas[i][k_index] for i in range(len(hom_meas))),float)
+            k_err = np.fromiter((hom_meas[i][err_index] for i in range(len(hom_meas))),float)
 
             # HOMs single plot
             plt.figure(figsize=(8,6))
@@ -151,11 +154,14 @@ for cosmo in cosmos:
             for method in methods:
                 Ct = np.loadtxt(homs_path+f'{cosmo}_{method}_{zs}_C{t}.txt')
                 Q_fit = np.loadtxt(homs_path+f'{cosmo}_{method}_{zs}_Q{t}_fit.txt')
-                plt.semilogy(theta_s,Q_fit*Ct, label=f'{method} - '+r'$\mathcal{Q}$'+f'={Q_fit:.2f}')
-                plt.semilogy(theta_s,fid_Q[i]*Ct,label=r'$\mathcal{Q}$ fid'+f'={fid_Q[i]:.2f}',linestyle='--')
+                plt.plot(theta_s,Q_fit*Ct, label=f'{method} - '+r'$\mathcal{Q}$'+f'={Q_fit:.2f}')
+                plt.plot(theta_s,fid_Q[i]*Ct,label=f'{method} '+r'$\mathcal{Q}$ fid'+f'={fid_Q[i]:.2f}',linestyle='--')
             
-            plt.xlim(2,10)
-            plt.title(rf'{plot_label} - $\langle \kappa^{t} \rangle$ - $z_s$={zs}',fontsize=16)
+            plt.xlim(2,20)
+            plt.yscale('log')
+            # plt.margins(y=-0.05)
+            plt.title(rf'{plot_label} - $z_s$={zs}',fontsize=16)
+            plt.ylabel(rf'$\langle \kappa^{t} \rangle$',fontsize=14)
             plt.xlabel(r'$\theta_s$ (arcmin)',fontsize=14)
             plt.legend()
             plt.savefig(homs_plots+f'{cosmo}_k{t}_zs={zs}.png', dpi=300) 
