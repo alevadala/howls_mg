@@ -13,7 +13,8 @@ from time import time
 # Output path
 outpath = 'Dustgrain_outs/'
 pk_path = outpath+'Pknl/'
-dv_path = '/home/alessandro/phd/kappa_moments/'
+# dv_path = '/home/alessandro/phd/kappa_moments/'
+dv_path = '/home/alessandro/phd/MG_Paper_outputs_FINAL_mean_DVs/outputs_FINAL_mean_DVs/mean_DVs/kappa_moments/'
 
 homs_out = outpath+'HOMs/'
 
@@ -24,10 +25,10 @@ os.makedirs(homs_out, exist_ok=True)
 zs_values = [0.5, 1.0, 2.0, 4.0]
 
 # Cosmologies tag
-cosmos = ['lcdm', 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1', 'fr6_0.06']
+cosmos = ['lcdm']#, 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1', 'fr6_0.06']
 
 # Smoothing scale range (in arcmins)
-theta_s = np.linspace(2,10,50)
+theta_s = np.linspace(.5,22,50)
 
 # Speed of light in vacuum (in km/s)
 c = cs.c/1e3
@@ -43,14 +44,14 @@ fid_Q4 = 12*7.29+4*16.23
 fid_Q = [fid_Q2, fid_Q3, fid_Q4]
 
 # Headers of the HOMs file
-homs_cols = ['smoothing','k2','sigk2','k3','sigk3','k4','sigk4','S3','sigS3','S4','sigS4']
+homs_cols = ['smoothing','k2','sigk2','k3','sigk3','k4','sigk4']#,'S3','sigS3','S4','sigS4']
 
 # Define cosmological parameters for DUSTGRAIN-pathfinder simulations
 # as they appear in https://doi:10.1093/mnras/sty2465 for LCDM background
 Omega_b = 0.0481
 h = 0.6731
 H0 = h*100 # Hubble constant in km/s/Mpc
-# Omega_Lambda = 0.68655 # Taken from CAMB results
+# Omega_Lambda = 0.68655 # Computed for different cosmologies
 A_s = 2.199e-9
 n_s = 0.9658
 w0 = -1.0
@@ -63,7 +64,7 @@ def E(z):
 # Comoving radial dinstance
 def r(z):
     integrand = lambda z_prime: 1 / E(z_prime)
-    result = integrate.quad(integrand, 0., z)[0]
+    result = integrate.quad(integrand, 0., z, limit = 300)[0]
     return (c/H0)*result
 
 # Fourier transform of top-hat filter
@@ -80,7 +81,7 @@ def limber_correction(l):
 # Smoothed convergence field
 def k_sm(z,theta_sm):
     integrand = lambda ell: limber_correction(ell) * P_zk(z, (ell+.5)/r(z)) * W_th(ell,theta_sm)**2 * ell
-    return 2*np.pi*integrate.quad(integrand, 1., 5000)[0]
+    return 2*np.pi*integrate.quad(integrand, 10, 1e5, limit = 300)[0]
 
 # Lensing efficiency
 def W(z):
@@ -89,7 +90,7 @@ def W(z):
 # Functional for the three different moments
 def C_t(theta_sm,t):
     integrand = lambda z: W(z)**t * k_sm(z,theta_sm)**(t-1) / E(z) / r(z)**(2*(t-1))
-    return (c/H0)*integrate.quad(integrand, 0., zs)[0]
+    return (c/H0)*integrate.quad(integrand, 0., zs, limit = 300)[0]
 
 # Function to fit the value of the Q parameters
 def k_fit(theta_sm, Q):
@@ -232,29 +233,32 @@ for cosmo in cosmos:
             for i,row in enumerate(reader):
                 pk_nonlin[i,:] = row
 
+        # Changing in h units
         pk_nonlin = pk_nonlin/h**3
         k = k*h
+
+        # Building interpolator for Limber approximation
         P_zk = interpolate.RectBivariateSpline(z, k, pk_nonlin, kx=5, ky=5)
 
         for zs in zs_values:
 
             print(f'Importing measured moments for {name_cosmo} at zs={zs}\n')
 
-            hom_file = dv_path+f'LCDM_DUSTGRAIN_convergence_true_{name_cosmo}_z_{zs}_filter_tophat_scales_[15.97 32.02 64.03]_pixels_kappa_moments.txt'
+            hom_file = dv_path+f'LCDM_DUSTGRAIN_convergence_true_{name_cosmo}_z_{zs}_filter_tophat_scales_[ 4  8 16 32]_pixels_kappa_moments.txt'
             hom_meas = np.loadtxt(hom_file)
 
-            arcmins = np.fromiter((hom_meas[i][0] for i in range(3)),float)
+            arcmins = np.fromiter((hom_meas[i][0] for i in range(len(hom_meas))),float)
 
             for t in [2,3,4]:
 
-                print(f'Computing C_t functional for moment k{t}\n')
+                print(f'Computing C_{t} for {name_cosmo} with {method}\n')
 
                 Ct = np.fromiter((C_t(theta,t) for theta in theta_s),float)
 
                 k_index = homs_cols.index('k'+f'{t}')
                 err_index = homs_cols.index('sigk'+f'{t}')
-                k_meas = np.fromiter((hom_meas[i][k_index] for i in range(3)),float)
-                k_err = np.fromiter((hom_meas[i][err_index] for i in range(3)),float)
+                k_meas = np.fromiter((hom_meas[i][k_index] for i in range(len(hom_meas))),float)
+                k_err = np.fromiter((hom_meas[i][err_index] for i in range(len(hom_meas))),float)
 
                 print(f'Fitting Q{t} value to measured moment k{t}\n')
 
@@ -269,9 +273,3 @@ t2 = time()
 
 print(f'Total time: {int((t2-t1)/60)} min {(t2-t1)%60:.2f} s')
 
-
-
-
-
-
-                
