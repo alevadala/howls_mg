@@ -25,7 +25,7 @@ os.makedirs(homs_out, exist_ok=True)
 zs_values = [0.5, 1.0, 2.0, 4.0]
 
 # Cosmologies tag
-cosmos = ['lcdm']#, 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1', 'fr6_0.06']
+cosmos = ['lcdm', 'fr4','fr5', 'fr6', 'fr4_0.3', 'fr5_0.1', 'fr5_0.15', 'fr6_0.1', 'fr6_0.06']
 
 # Smoothing scale range (in arcmins)
 theta_s = np.linspace(.5,22,50)
@@ -44,7 +44,7 @@ fid_Q4 = 12*7.29+4*16.23
 fid_Q = [fid_Q2, fid_Q3, fid_Q4]
 
 # Headers of the HOMs file
-homs_cols = ['smoothing','k2','sigk2','k3','sigk3','k4','sigk4']#,'S3','sigS3','S4','sigS4']
+homs_cols = ['smoothing','k2','sigk2','k3','sigk3','k4','sigk4']#,'S3','sigS3','S4','sigS4'] # old headers
 
 # Define cosmological parameters for DUSTGRAIN-pathfinder simulations
 # as they appear in https://doi:10.1093/mnras/sty2465 for LCDM background
@@ -61,7 +61,7 @@ w_a = 0.0
 def E(z):
     return np.sqrt(Omega_M*(1+z)**3+Ode)
 
-# Comoving radial dinstance
+# Comoving radial distance
 def r(z):
     integrand = lambda z_prime: 1 / E(z_prime)
     result = integrate.quad(integrand, 0., z, limit = 300)[0]
@@ -239,15 +239,25 @@ for cosmo in cosmos:
 
         # Building interpolator for Limber approximation
         P_zk = interpolate.RectBivariateSpline(z, k, pk_nonlin, kx=5, ky=5)
+        
+        # Select noisless/noisy case
+        noisy = False
+
+        if noisy:
+            noise_tag = 'noisy'
+        else:
+            noise_tag = 'true'
 
         for zs in zs_values:
 
             print(f'Importing measured moments for {name_cosmo} at zs={zs}\n')
 
-            hom_file = dv_path+f'LCDM_DUSTGRAIN_convergence_true_{name_cosmo}_z_{zs}_filter_tophat_scales_[ 4  8 16 32]_pixels_kappa_moments.txt'
-            hom_meas = np.loadtxt(hom_file)
+            hom_file = dv_path+f'LCDM_DUSTGRAIN_convergence_{noise_tag}_{name_cosmo}_z_{zs}_filter_tophat_scales_[ 4  8 16 32]_pixels_kappa_moments.txt'
+            # hom_meas = np.loadtxt(hom_file)
 
-            arcmins = np.fromiter((hom_meas[i][0] for i in range(len(hom_meas))),float)
+            # arcmins = np.fromiter((hom_meas[i][0] for i in range(len(hom_meas))),float)
+            smoothing_index = homs_cols.index('smoothing')
+            arcmins = np.loadtxt(hom_file,usecols=smoothing_index)
 
             for t in [2,3,4]:
 
@@ -257,8 +267,10 @@ for cosmo in cosmos:
 
                 k_index = homs_cols.index('k'+f'{t}')
                 err_index = homs_cols.index('sigk'+f'{t}')
-                k_meas = np.fromiter((hom_meas[i][k_index] for i in range(len(hom_meas))),float)
-                k_err = np.fromiter((hom_meas[i][err_index] for i in range(len(hom_meas))),float)
+                # k_meas = np.fromiter((hom_meas[i][k_index] for i in range(len(hom_meas))),float)
+                # k_err = np.fromiter((hom_meas[i][err_index] for i in range(len(hom_meas))),float)
+                k_meas = np.loadtxt(hom_file,usecols=k_index)
+                k_err = np.loadtxt(hom_file,usecols=err_index)
 
                 print(f'Fitting Q{t} value to measured moment k{t}\n')
 
@@ -266,8 +278,13 @@ for cosmo in cosmos:
 
                 print('Saving on file\n')
 
-                np.savetxt(homs_out+f'{cosmo}_{method}_{zs}_C{t}.txt', Ct)
-                np.savetxt(homs_out+f'{cosmo}_{method}_{zs}_Q{t}_fit.txt',Q_fit)
+                if noisy:
+                    noisy_file = '_noisy'
+                else:
+                    noisy_file = ''
+
+                np.savetxt(homs_out+f'{cosmo}_{method}{noisy_file}_{zs}_C{t}.txt', Ct)
+                np.savetxt(homs_out+f'{cosmo}_{method}{noisy_file}_{zs}_Q{t}_fit.txt',Q_fit)
 
 t2 = time()
 
