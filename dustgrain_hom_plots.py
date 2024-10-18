@@ -155,11 +155,11 @@ for cosmo in cosmos:
                 Ct = np.loadtxt(homs_path+f'{cosmo}_{method}_{zs}_C{t}.txt')
                 Q_fit = np.loadtxt(homs_path+f'{cosmo}_{method}_{zs}_Q{t}_fit.txt')
                 plt.plot(theta_s,Q_fit*Ct, label=f'{method} - '+r'$\mathcal{Q}$'+f'={Q_fit:.2f}')
-                plt.plot(theta_s,fid_Q[i]*Ct,label=f'{method} '+r'$\mathcal{Q}$ fid'+f'={fid_Q[i]:.2f}',linestyle='--')
+                # plt.plot(theta_s,fid_Q[i]*Ct,label=f'{method} '+r'$\mathcal{Q}$ fid'+f'={fid_Q[i]:.2f}',linestyle='--')
             
             plt.xlim(2,20)
             plt.yscale('log')
-            # plt.margins(y=-0.05)
+            plt.margins(y=-0.1)
             plt.title(rf'{plot_label} - $z_s$={zs}',fontsize=16)
             plt.ylabel(rf'$\langle \kappa^{t} \rangle$',fontsize=14)
             plt.xlabel(r'$\theta_s$ (arcmin)',fontsize=14)
