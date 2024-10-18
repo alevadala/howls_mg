@@ -199,85 +199,85 @@ for cosmo in cosmos:
 
     print('Saving files and plots\n')
     
-    # # R2
-    # plt.figure(figsize=(8,6))
-    # sns.set_theme(style='whitegrid')
-    # sns.set_palette('colorblind')
-    # plt.title(f'2PCF - {plot_label}')
-    # for r in range(len(r2_2pcf)):
-    #     plt.plot(zs_values, r2_2pcf[r,:],marker='.')
-    # plt.xticks(zs_values)
-    # plt.ylabel(r'$R^2$ score')
-    # plt.xlabel(r'$z_s$')
-    # plt.legend(labels_2pcf,ncols=3,fontsize='small',framealpha=0.3)
-    # plt.savefig(plots_out+f'2PCF_{cosmo}_R2.png', dpi=300)
-    # plt.clf()
-    # plt.close('all')
+    # R2
+    plt.figure(figsize=(8,6))
+    sns.set_theme(style='whitegrid')
+    sns.set_palette('colorblind')
+    plt.title(f'2PCF - {plot_label}')
+    for r in range(len(r2_2pcf)):
+        plt.plot(zs_values, r2_2pcf[r,:],marker='.')
+    plt.xticks(zs_values)
+    plt.ylabel(r'$R^2$ score')
+    plt.xlabel(r'$z_s$')
+    plt.legend(labels_2pcf,ncols=3,fontsize='small',framealpha=0.3)
+    plt.savefig(plots_out+f'2PCF_{cosmo}_R2.png', dpi=300)
+    plt.clf()
+    plt.close('all')
 
-    # fig, axs = plt.subplots(2,2, figsize=(15,10), sharex=True, sharey=False)
-    # plt.suptitle(f'{plot_label}')
-    # sns.set_theme(style='whitegrid')
-    # sns.set_palette(palette='colorblind')
-    # for r in range(len(r2_homs)):
-    #     axs[0,0].plot(zs_values, r2_homs[r,:],marker='.')
-    #     axs[0,0].set(xlabel=r'$z_s$', ylabel=r'$R^2$ score')
-    #     axs[0,0].set_xticks(zs_values)
-    #     axs[0,0].legend(labels_homs,ncols=3,fontsize='x-small',framealpha=0.3)
-    # for t in [2,3,4]:
-    #     if t == 2:
-    #         i_plot, j_plot = 0,1
-    #     else:
-    #         i_plot, j_plot = 1, (t-3)
-    #     for r in range(len(r2_homs)):
-    #         if rf'$\langle \kappa{t} \rangle$' in labels_homs[r]:
-    #             t_index = labels_homs.index(labels_homs[r])
-    #             axs[i_plot,j_plot].plot(zs_values, r2_homs[t_index,:],marker='.',label=labels_homs[r])
-    #     axs[i_plot,j_plot].set_xticks(zs_values)
-    #     axs[i_plot,j_plot].set(xlabel=r'$z_s$',ylabel=r'$R^2$ score')
-    #     axs[i_plot,j_plot].legend(fontsize='small',framealpha=0.3)
-    # plt.savefig(plots_out+f'HOMs_{cosmo}_R2.png', dpi=300)
-    # plt.clf()
-    # plt.close('all')
+    fig, axs = plt.subplots(2,2, figsize=(15,10), sharex=True, sharey=False)
+    plt.suptitle(f'{plot_label}')
+    sns.set_theme(style='whitegrid')
+    sns.set_palette(palette='colorblind')
+    for r in range(len(r2_homs)):
+        axs[0,0].plot(zs_values, r2_homs[r,:],marker='.')
+        axs[0,0].set(xlabel=r'$z_s$', ylabel=r'$R^2$ score')
+        axs[0,0].set_xticks(zs_values)
+        axs[0,0].legend(labels_homs,ncols=3,fontsize='x-small',framealpha=0.3)
+    for t in [2,3,4]:
+        if t == 2:
+            i_plot, j_plot = 0,1
+        else:
+            i_plot, j_plot = 1, (t-3)
+        for r in range(len(r2_homs)):
+            if rf'$\langle \kappa{t} \rangle$' in labels_homs[r]:
+                t_index = labels_homs.index(labels_homs[r])
+                axs[i_plot,j_plot].plot(zs_values, r2_homs[t_index,:],marker='.',label=labels_homs[r])
+        axs[i_plot,j_plot].set_xticks(zs_values)
+        axs[i_plot,j_plot].set(xlabel=r'$z_s$',ylabel=r'$R^2$ score')
+        axs[i_plot,j_plot].legend(fontsize='small',framealpha=0.3)
+    plt.savefig(plots_out+f'HOMs_{cosmo}_R2.png', dpi=300)
+    plt.clf()
+    plt.close('all')
 
-    # # SMAPE
-    # plt.figure(figsize=(8,6))
-    # sns.set_theme(style='whitegrid')
-    # sns.set_palette('colorblind')
-    # plt.title(f'2PCF - {plot_label}')
-    # for r in range(len(smape_2pcf)):
-    #     plt.plot(zs_values, smape_2pcf[r,:],marker='.')
-    # plt.xticks(zs_values)
-    # plt.ylabel('SMAPE')
-    # plt.xlabel(r'$z_s$')
-    # plt.legend(labels_2pcf,ncols=3,fontsize='small',framealpha=0.3)
-    # plt.savefig(plots_out+f'2PCF_{cosmo}_SMAPE.png', dpi=300)
-    # plt.clf()
-    # plt.close('all')
+    # SMAPE
+    plt.figure(figsize=(8,6))
+    sns.set_theme(style='whitegrid')
+    sns.set_palette('colorblind')
+    plt.title(f'2PCF - {plot_label}')
+    for r in range(len(smape_2pcf)):
+        plt.plot(zs_values, smape_2pcf[r,:],marker='.')
+    plt.xticks(zs_values)
+    plt.ylabel('SMAPE')
+    plt.xlabel(r'$z_s$')
+    plt.legend(labels_2pcf,ncols=3,fontsize='small',framealpha=0.3)
+    plt.savefig(plots_out+f'2PCF_{cosmo}_SMAPE.png', dpi=300)
+    plt.clf()
+    plt.close('all')
 
-    # fig, axs = plt.subplots(2,2, figsize=(15,10), sharex=True, sharey=False)
-    # plt.suptitle(f'{plot_label}')
-    # sns.set_theme(style='whitegrid')
-    # sns.set_palette(palette='colorblind')
-    # for r in range(len(smape_homs)):
-    #     axs[0,0].plot(zs_values, smape_homs[r,:],marker='.')
-    #     axs[0,0].set(xlabel=r'$z_s$', ylabel='SMAPE')
-    #     axs[0,0].set_xticks(zs_values)
-    #     axs[0,0].legend(labels_homs,ncols=3,fontsize='x-small',framealpha=0.3)
-    # for t in [2,3,4]:
-    #     if t == 2:
-    #         i_plot, j_plot = 0,1
-    #     else:
-    #         i_plot, j_plot = 1, (t-3)
-    #     for r in range(len(smape_homs)):
-    #         if rf'$\langle \kappa{t} \rangle$' in labels_homs[r]:
-    #             t_index = labels_homs.index(labels_homs[r])
-    #             axs[i_plot,j_plot].plot(zs_values, smape_homs[t_index,:],marker='.',label=labels_homs[r])
-    #     axs[i_plot,j_plot].set_xticks(zs_values)
-    #     axs[i_plot,j_plot].set(xlabel=r'$z_s$',ylabel='SMAPE')
-    #     axs[i_plot,j_plot].legend(fontsize='small',framealpha=0.3)
-    # plt.savefig(plots_out+f'HOMs_{cosmo}_SMAPE.png', dpi=300)
-    # plt.clf()
-    # plt.close('all')
+    fig, axs = plt.subplots(2,2, figsize=(15,10), sharex=True, sharey=False)
+    plt.suptitle(f'{plot_label}')
+    sns.set_theme(style='whitegrid')
+    sns.set_palette(palette='colorblind')
+    for r in range(len(smape_homs)):
+        axs[0,0].plot(zs_values, smape_homs[r,:],marker='.')
+        axs[0,0].set(xlabel=r'$z_s$', ylabel='SMAPE')
+        axs[0,0].set_xticks(zs_values)
+        axs[0,0].legend(labels_homs,ncols=3,fontsize='x-small',framealpha=0.3)
+    for t in [2,3,4]:
+        if t == 2:
+            i_plot, j_plot = 0,1
+        else:
+            i_plot, j_plot = 1, (t-3)
+        for r in range(len(smape_homs)):
+            if rf'$\langle \kappa{t} \rangle$' in labels_homs[r]:
+                t_index = labels_homs.index(labels_homs[r])
+                axs[i_plot,j_plot].plot(zs_values, smape_homs[t_index,:],marker='.',label=labels_homs[r])
+        axs[i_plot,j_plot].set_xticks(zs_values)
+        axs[i_plot,j_plot].set(xlabel=r'$z_s$',ylabel='SMAPE')
+        axs[i_plot,j_plot].legend(fontsize='small',framealpha=0.3)
+    plt.savefig(plots_out+f'HOMs_{cosmo}_SMAPE.png', dpi=300)
+    plt.clf()
+    plt.close('all')
 
 t2 = time()
 
